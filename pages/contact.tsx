@@ -4,7 +4,7 @@ import Layout from "../components/layout"
 import { motion } from "framer-motion"
 import { User, Notebook, Code, Tool } from "tabler-icons-react"
 
-const About = () => {
+const Contact = () => {
   return (
     <>
       <Head>
@@ -22,4 +22,4 @@ const About = () => {
   )
 }
 
-export default About
+export default Contact
