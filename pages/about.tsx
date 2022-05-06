@@ -1,10 +1,14 @@
-import { Title, Image, Text, Accordion, List } from "@mantine/core"
+import { Title, Image, Text, Accordion, List, useMantineTheme } from "@mantine/core"
 import Head from "next/head"
 import Layout from "../components/layout"
 import type { NextPage } from "next"
 import { motion } from "framer-motion"
+import { useMediaQuery } from "@mantine/hooks"
 
 const About: NextPage = () => {
+  const theme = useMantineTheme()
+  const greaterThanSM = useMediaQuery(`(min-width: ${theme.breakpoints.sm}px)`)
+
   return (
     <>
       <Head>
@@ -26,7 +30,7 @@ const About: NextPage = () => {
                 width={250}
                 height={200}
                 alt="gubate"
-                sx={{ float: "left" }}
+                sx={greaterThanSM ? { float: "left" } : undefined}
                 radius="md"
                 mr="md"
                 mb="md"
