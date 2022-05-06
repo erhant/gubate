@@ -1,3 +1,4 @@
+// TODO: there is a simpler way to find this
 export const isTodayMothersDay = (): boolean => {
   // get today; it should be May & Sunday
   const today: Date = new Date()

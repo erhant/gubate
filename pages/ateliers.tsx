@@ -1,8 +1,8 @@
-import { Card, Center, Anchor, Title, Stepper, Transition, Text, Box } from "@mantine/core"
+import { Title, Text, Box } from "@mantine/core"
 import Head from "next/head"
 import Layout from "../components/layout"
 import type { NextPage } from "next"
-
+import { motion } from "framer-motion"
 const content = [
   {
     title: "Bahar Temalı Workshop",
@@ -25,11 +25,13 @@ const Ateliers: NextPage = () => {
       <Layout>
         <>
           {content.map((a, i) => (
-            <Box key={i} sx={{ borderLeft: "0.5em outset", paddingLeft: "2em" }} my="md">
-              <Title>{a.title}</Title>
-              <Text color="dimmed">{a.date}</Text>
-              <Text>{a.desc}</Text>
-            </Box>
+            <motion.div initial={{ x: 0 }} whileHover={{ x: 5 }} key={i}>
+              <Box sx={{ borderLeft: "0.5em outset", paddingLeft: "2em" }} my="md">
+                <Title>{a.title}</Title>
+                <Text color="dimmed">{a.date}</Text>
+                <Text>{a.desc}</Text>
+              </Box>
+            </motion.div>
           ))}
         </>
       </Layout>

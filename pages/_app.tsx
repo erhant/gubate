@@ -1,7 +1,6 @@
 import { AppProps } from "next/app"
 import { useState } from "react"
 import DefaultMantineTheme from "../themes/default"
-// install cookies-next package to manage cookies
 import "../styles/globals.scss"
 import { MantineProvider, ColorScheme, ColorSchemeProvider } from "@mantine/core"
 

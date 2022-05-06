@@ -10,10 +10,10 @@ const links = [
 ]
 const Header = () => {
   return (
-    <Box component="header" py="lg">
+    <Box component="header" my="lg">
       <Container>
         <Group>
-          <Image src="/assets/logo.png" width={200} height={80} alt="gubate" ml="lg" />
+          <Image src="/assets/logo.png" width={200} height="100%" alt="gubate" ml="lg" />
           <span style={{ flexGrow: 1 }} />
           {links.map((l, i) => (
             <Link href={l.href} key={i} passHref>

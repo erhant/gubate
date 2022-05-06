@@ -1,8 +1,8 @@
-import { Anchor, Box, Group, Text, Tooltip } from "@mantine/core"
+import { Box, Text } from "@mantine/core"
 
 const Footer = () => {
   return (
-    <Box component="footer" my="lg" pt="md">
+    <Box component="footer" my="lg">
       <Text sx={{ textAlign: "center" }}>Erhan Tezcan tarafından &hearts; ile yapıldı.</Text>
     </Box>
   )

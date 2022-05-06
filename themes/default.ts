@@ -3,6 +3,7 @@ import { MantineThemeOverride } from "@mantine/core"
 type TenColors = [string, string, string, string, string, string, string, string, string, string]
 
 const fonts: string = "'Mali', cursive"
+
 // #2296B1
 const myBlues: TenColors = [
   "#dcf5ff",

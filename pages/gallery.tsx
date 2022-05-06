@@ -1,4 +1,4 @@
-import { Card, Center, Anchor, Title, Pagination, Transition, SimpleGrid, Text, Image, Modal } from "@mantine/core"
+import { Center, Pagination, SimpleGrid, Text, Image, Modal } from "@mantine/core"
 import Head from "next/head"
 import Layout from "../components/layout"
 import { motion } from "framer-motion"
@@ -40,18 +40,19 @@ const Gallery: NextPage<{ images: string[]; numPages: number }> = ({ images, num
               <Center>
                 <SimpleGrid spacing="sm" cols={COLS} sx={{ marginLeft: "auto", marginRight: "auto" }}>
                   {images.slice((activePage - 1) * COLS * COLS, activePage * COLS * COLS).map((src, i) => (
-                    <Image
-                      src={"/assets/gallery/" + src}
-                      key={i}
-                      m="xs"
-                      width="15vw"
-                      height="15vw"
-                      onClick={() => {
-                        setModalImage(src)
-                        setOpenModal(true)
-                      }}
-                      sx={{ cursor: "pointer" }}
-                    />
+                    <motion.div key={i} whileHover={{ scale: 1.1 }}>
+                      <Image
+                        src={"/assets/gallery/" + src}
+                        m="xs"
+                        width="15vw"
+                        height="15vw"
+                        onClick={() => {
+                          setModalImage(src)
+                          setOpenModal(true)
+                        }}
+                        sx={{ cursor: "pointer" }}
+                      />
+                    </motion.div>
                   ))}
                 </SimpleGrid>
               </Center>
