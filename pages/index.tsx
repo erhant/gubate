@@ -7,13 +7,14 @@ import "react-responsive-carousel/lib/styles/carousel.min.css" // requires a loa
 import { Carousel } from "react-responsive-carousel"
 import type { NextPage } from "next"
 
+const carouselImages = ["/assets/mother/withbird.jpeg"]
 const Index: NextPage = () => {
-  const [showToday, setShowToday] = useState(true)
+  const [showToday, setShowToday] = useState(false)
 
   useEffect(() => {
     // check if its mothers day
     if (isTodayMothersDay()) {
-      const shown = false // window.sessionStorage.getItem("gubate-mother-shown")
+      const shown = window.sessionStorage.getItem("gubate-mother-shown")
       if (!shown) {
         setShowToday(true)
         window.sessionStorage.setItem("gubate-mother-shown", "1")
@@ -40,23 +41,18 @@ const Index: NextPage = () => {
                 <Image src="/assets/mother/withbird.jpeg" width={350} height={350} alt="bird" />
               </Center>
 
-              <Title order={3}>Seni çok seven, Erhan.</Title>
+              <Title order={3}>💐 Seni çok seven, Erhan.💐 </Title>
             </Box>
           </Modal>
 
           {/* image carousel */}
           <Box my="md">
             <Carousel autoPlay interval={5000} infiniteLoop showThumbs={false} showStatus={false}>
-              <div>
-                <img
-                  src="/assets/mother/withbird.jpeg"
-                  style={{ width: 350, height: 350, objectFit: "cover" }}
-                  alt="bird"
-                />
-              </div>
-              <div>
-                <img src="/assets/gallery/1.jpeg" style={{ width: 350, height: 350, objectFit: "cover" }} alt="bio" />
-              </div>
+              {carouselImages.map((img, i) => (
+                <div key={i}>
+                  <img src={img} style={{ width: 350, height: 350, objectFit: "cover" }} alt="carousel-image" />
+                </div>
+              ))}
             </Carousel>
           </Box>
 

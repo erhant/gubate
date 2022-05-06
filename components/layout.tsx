@@ -1,6 +1,5 @@
-// the layout is simply header - footer - side navbar - content
-import { AppShell, Container } from "@mantine/core"
-import { ReactChild, ReactElement, useState } from "react"
+import { Container } from "@mantine/core"
+import { ReactChild } from "react"
 import Header from "./header"
 import Footer from "./footer"
 
@@ -10,11 +9,14 @@ type Props = {
 
 const Layout = ({ children }: Props) => {
   return (
-    <>
-      <AppShell padding="md" header={<Header />} footer={<Footer />}>
+    <body>
+      <Header />
+      <main>
         <Container>{children}</Container>
-      </AppShell>
-    </>
+      </main>
+      <div style={{ flexGrow: 1 }} />
+      <Footer />
+    </body>
   )
 }
 

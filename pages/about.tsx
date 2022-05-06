@@ -1,9 +1,8 @@
-import { Card, Center, Anchor, Title, Image, Text, Accordion, List } from "@mantine/core"
+import { Title, Image, Text, Accordion, List } from "@mantine/core"
 import Head from "next/head"
 import Layout from "../components/layout"
-import { motion } from "framer-motion"
-import { User, Notebook, Code, Tool } from "tabler-icons-react"
 import type { NextPage } from "next"
+import { motion } from "framer-motion"
 
 const About: NextPage = () => {
   return (
@@ -15,7 +14,13 @@ const About: NextPage = () => {
       <Layout>
         <>
           <Accordion initialItem={0}>
-            <Accordion.Item label={<Title>Gülçin Balta Tezcan kimdir?</Title>}>
+            <Accordion.Item
+              label={
+                <motion.div initial={{ x: 0 }} whileHover={{ x: 5 }}>
+                  <Title>Gülçin Balta Tezcan kimdir?</Title>
+                </motion.div>
+              }
+            >
               <Image
                 src="/assets/gallery/1.jpeg"
                 width={250}
@@ -41,7 +46,13 @@ const About: NextPage = () => {
               </Text>
             </Accordion.Item>
 
-            <Accordion.Item label={<Title my="sm">Katıldığı Sergi ve Yarışmalar</Title>}>
+            <Accordion.Item
+              label={
+                <motion.div initial={{ x: 0 }} whileHover={{ x: 5 }}>
+                  <Title my="sm">Katıldığı Sergi ve Yarışmalar</Title>
+                </motion.div>
+              }
+            >
               <List>
                 {[
                   "1981 18. Antalya Şenliği Grafik Sergisi",
@@ -91,7 +102,13 @@ const About: NextPage = () => {
               </List>
             </Accordion.Item>
 
-            <Accordion.Item label={<Title my="sm">Yapmıs Oldugu İdari Görevler</Title>}>
+            <Accordion.Item
+              label={
+                <motion.div initial={{ x: 0 }} whileHover={{ x: 5 }}>
+                  <Title my="sm">Yapmıs Oldugu İdari Görevler</Title>
+                </motion.div>
+              }
+            >
               <List>
                 {[
                   "M.Ü. Sinema-TV Bölümü, Bölüm Başkan yardımcılığı 1995-1998",

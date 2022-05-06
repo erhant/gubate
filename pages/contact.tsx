@@ -36,7 +36,7 @@ const Contact: NextPage = () => {
 
           {/* contact info */}
           <Grid.Col xs={12} sm={4}>
-            <Box>
+            <Box my="md">
               <Text>
                 <b>Gülçin Balta Tezcan</b> <br />
                 +90 532 242 77 48 <br />
