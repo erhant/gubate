@@ -1,4 +1,16 @@
-import { Box, Anchor, Container, Image, Group, useMantineTheme, Drawer, Burger, Stack } from "@mantine/core"
+import {
+  Box,
+  Anchor,
+  Container,
+  Image,
+  Group,
+  useMantineTheme,
+  Drawer,
+  Burger,
+  Stack,
+  Divider,
+  Button,
+} from "@mantine/core"
 import { useMediaQuery } from "@mantine/hooks"
 import Link from "next/link"
 import { useState } from "react"
@@ -19,11 +31,11 @@ const Header = () => {
   return (
     <Box component="header" my="lg">
       <Container>
-        <Drawer opened={opened} onClose={() => setOpened(false)} padding="sm" size="xs">
+        <Drawer opened={opened} onClose={() => setOpened(false)} padding="xs" size="xs" position="right">
           <Stack>
             {links.map((l, i) => (
               <Link href={l.href} key={i} passHref>
-                <Anchor>{l.text}</Anchor>
+                <Button variant="light">{l.text}</Button>
               </Link>
             ))}
           </Stack>

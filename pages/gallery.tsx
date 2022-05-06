@@ -25,7 +25,6 @@ const Gallery: NextPage<{ images: string[]; numPages: number }> = ({ images, num
             transition="fade"
             transitionDuration={600}
             centered
-            transitionTimingFunction="ease"
             opened={openModal}
             onClose={() => setOpenModal(false)}
             withCloseButton={false}
@@ -44,8 +43,8 @@ const Gallery: NextPage<{ images: string[]; numPages: number }> = ({ images, num
                       <Image
                         src={"/assets/gallery/" + src}
                         m="xs"
-                        width="15vw"
-                        height="15vw"
+                        width="max(15vw, 100px)"
+                        height="max(15vw, 100px)"
                         onClick={() => {
                           setModalImage(src)
                           setOpenModal(true)
