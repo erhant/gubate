@@ -9,14 +9,14 @@ type Props = {
 
 const Layout = ({ children }: Props) => {
   return (
-    <body>
+    <div className="layout">
       <Header />
       <main>
         <Container>{children}</Container>
       </main>
       <div style={{ flexGrow: 1 }} />
       <Footer />
-    </body>
+    </div>
   )
 }
 
