@@ -2,7 +2,7 @@
   "name": "gubate",
   "private": true,
   "scripts": {
-    "setup": "pnpm --dir api install && pnpm --dir web install",
+    "deps": "pnpm --dir api install && pnpm --dir web install",
     "dev": "pnpm --dir api dev & pnpm --dir web dev",
     "build": "pnpm --dir web build",
     "typecheck": "pnpm --dir api typecheck && pnpm --dir web exec tsc --noEmit"

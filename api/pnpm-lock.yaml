@@ -9,24 +9,24 @@ importers:
   .:
     dependencies:
       '@vercel/blob':
-        specifier: latest
+        specifier: ^2.9.0
         version: 2.9.0
       hono:
-        specifier: latest
+        specifier: ^4.13.22
         version: 4.13.22
     devDependencies:
       '@hono/node-server':
-        specifier: latest
+        specifier: ^2.1.11
         version: 2.1.11(hono@4.13.22)
       '@types/node':
-        specifier: latest
+        specifier: ^26.6.11
         version: 26.6.11
       tsx:
-        specifier: latest
+        specifier: ^4.23.15
         version: 4.23.15
-      typescript:
-        specifier: latest
-        version: 7.0.2
+      typescript-native:
+        specifier: npm:typescript@^7.0.0
+        version: typescript@7.0.2
 
 packages:
 

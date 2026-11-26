@@ -12,7 +12,7 @@ Needs Node 22.9 or newer and pnpm.
 
 ```sh
 cp api/.env.example api/.env   # then fill in ADMIN_PASSWORD and SESSION_SECRET
-pnpm run setup                 # installs api/ and web/ dependencies
+pnpm run deps                  # installs api/ and web/ dependencies
 pnpm run dev                   # api on :3001, site on :5173
 ```
 
