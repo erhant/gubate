@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
 import { admin, ApiError } from "../api"
-import { setInk } from "../ink/InkBackground"
+import { InkPreview, setInk } from "../ink/InkBackground"
 import { href } from "../router"
 import type { Group, Painting, Series, SiteData } from "../types"
 import { prepareImage, suggestFromUrl } from "./imageTools"
@@ -258,6 +258,8 @@ function NumberField(props: { id: string; label: string; value: number | null; o
 }
 
 const UNTITLED = "Adsız"
+/** value of the "new group" entry in the group list; never a real group id */
+const NEW_GROUP = "__new__"
 
 /**
  * Adds a painting to a series (at the end). A painting that has no real title yet is named
@@ -411,11 +413,31 @@ function PaintingEditor({
 }) {
   const [confirming, setConfirming] = useState(false)
   const [note, setNote] = useState("")
+  const [addingGroup, setAddingGroup] = useState(false)
+  const [groupName, setGroupName] = useState("")
   const set = (change: (p: Painting) => void) =>
     update((d) => {
       const p = d.paintings.find((x) => x.id === painting.id)
       if (p) change(p)
     })
+
+  // Creates a group from the editor and puts this painting in it. A name that already exists
+  // (ignoring case) reuses that group, so the same group is never created twice.
+  const createGroup = () => {
+    const name = groupName.trim()
+    if (!name) return
+    update((d) => {
+      let group = d.groups.find((g) => g.name.trim().toLocaleLowerCase("tr") === name.toLocaleLowerCase("tr"))
+      if (!group) {
+        group = { id: newId(slug(name) || "grup"), name }
+        d.groups.push(group)
+      }
+      const p = d.paintings.find((x) => x.id === painting.id)
+      if (p) p.groupId = group.id
+    })
+    setGroupName("")
+    setAddingGroup(false)
+  }
 
   // the page background previews the colours as she changes them
   useEffect(() => {
@@ -474,8 +496,12 @@ function PaintingEditor({
         <Field id="p-group" label="Grup">
           <select
             id="p-group"
-            value={painting.groupId ?? ""}
-            onChange={(e) => set((p) => (p.groupId = e.target.value || null))}
+            value={addingGroup ? NEW_GROUP : (painting.groupId ?? "")}
+            onChange={(e) => {
+              const value = e.target.value
+              setAddingGroup(value === NEW_GROUP)
+              if (value !== NEW_GROUP) set((p) => (p.groupId = value || null))
+            }}
           >
             <option value="">Grup yok</option>
             {groups.map((g) => (
@@ -483,8 +509,34 @@ function PaintingEditor({
                 {g.name}
               </option>
             ))}
+            <option value={NEW_GROUP}>+ Yeni grup…</option>
           </select>
         </Field>
+        {addingGroup && (
+          <div className="field-row new-group">
+            <Field id="p-group-new" label="Yeni grubun adı">
+              <input
+                id="p-group-new"
+                value={groupName}
+                autoFocus
+                onChange={(e) => setGroupName(e.target.value)}
+                onKeyDown={(e) => {
+                  // Enter adds the group; it must not submit anything else
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    createGroup()
+                  }
+                }}
+              />
+            </Field>
+            <button type="button" className="button accent" disabled={!groupName.trim()} onClick={createGroup}>
+              Ekle
+            </button>
+            <button type="button" className="button paper" onClick={() => setAddingGroup(false)}>
+              Vazgeç
+            </button>
+          </div>
+        )}
         <label className="switch" htmlFor="p-sold">
           <input
             id="p-sold"
@@ -534,7 +586,12 @@ function PaintingEditor({
 
         <fieldset className="colours">
           <legend>Arka plan renkleri</legend>
-          <p className="muted small">Sayfanın arka planı bu renklere göre değişir. Değiştirince hemen görürsünüz.</p>
+          <p className="muted small">
+            Bu resim açıldığında sayfanın arka planı bu renkleri alır. Aşağıdaki kutu nasıl görüneceğini gösterir.
+          </p>
+          <InkPreview palette={painting.palette}>
+            <img src={painting.images.small} alt="" style={{ aspectRatio: painting.aspect }} />
+          </InkPreview>
           <div className="field-row">
             {COLOURS.map((label, i) => (
               <Field key={label} id={`p-colour-${i}`} label={label}>

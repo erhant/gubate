@@ -52,10 +52,24 @@ function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
   return [h, max === 0 ? 0 : d / max, max]
 }
 
+/** Colour difference that weights green most, as the eye does. 0 = identical, about 1 = black vs white. */
+function distance(a: Rgb, b: Rgb): number {
+  const dr = a[0] - b[0],
+    dg = a[1] - b[1],
+    db = a[2] - b[2]
+  return Math.sqrt(0.3 * dr * dr + 0.59 * dg * dg + 0.11 * db * db)
+}
+
+/** Two suggested colours closer than this look like the same colour in the editor. */
+const MIN_SPREAD = 0.14
+
 /**
- * Suggests [ground, accent 1, accent 2] for an image.
- * Ground: the most common coarse colour. Accents: the two strongest hue families among the
- * saturated pixels, at least two hue bins apart so they do not come out as near-duplicates.
+ * Suggests [ground, accent 1, accent 2] for an image, spread apart so the three are distinct.
+ *
+ * Ground is the most common coarse colour (usually the paper). Accents come from the pixels
+ * that are NOT the ground: they are grouped by hue (plus one group for dark ink), and each
+ * accent is the group that is both common and far from everything already chosen. Without
+ * the "far from" part, a painting on tinted paper gets the paper back as its first accent.
  */
 export function suggestPalette(source: CanvasImageSource): [Hex, Hex, Hex] {
   const N = 96
@@ -65,49 +79,60 @@ export function suggestPalette(source: CanvasImageSource): [Hex, Hex, Hex] {
   ctx.drawImage(source, 0, 0, N, N)
   const px = ctx.getImageData(0, 0, N, N).data
 
+  // pass 1: the ground
   const buckets = new Map<number, [number, number, number, number]>()
-  const bins: [number, number, number, number][] = Array.from({ length: 12 }, () => [0, 0, 0, 0])
-  let darkest: Rgb = [0.1, 0.1, 0.12],
-    darkestLum = 2
   for (let i = 0; i < px.length; i += 4) {
-    const r = px[i]! / 255,
-      g = px[i + 1]! / 255,
-      b = px[i + 2]! / 255
     const key = ((px[i]! >> 5) << 6) | ((px[i + 1]! >> 5) << 3) | (px[i + 2]! >> 5)
     const bucket = buckets.get(key) ?? [0, 0, 0, 0]
     bucket[0] += 1
-    bucket[1] += r
-    bucket[2] += g
-    bucket[3] += b
+    bucket[1] += px[i]! / 255
+    bucket[2] += px[i + 1]! / 255
+    bucket[3] += px[i + 2]! / 255
     buckets.set(key, bucket)
-    const [h, s, v] = rgbToHsv(r, g, b)
-    if (s > 0.28 && v > 0.25) {
-      const weight = s * s * v
-      const bin = bins[Math.floor(h * 12) % 12]!
-      bin[0] += weight
-      bin[1] += weight * r
-      bin[2] += weight * g
-      bin[3] += weight * b
-    }
-    const l = lum([r, g, b])
-    if (l < darkestLum) {
-      darkestLum = l
-      darkest = [r, g, b]
-    }
   }
   const top = [...buckets.values()].sort((x, y) => y[0] - x[0])[0]!
   const ground: Rgb = [top[1] / top[0], top[2] / top[0], top[3] / top[0]]
 
-  const order = bins.map((_, i) => i).sort((x, y) => bins[y]![0] - bins[x]![0])
-  const colour = (i: number | undefined): Rgb | null => {
-    const bin = i === undefined ? undefined : bins[i]
-    return bin && bin[0] > 0.5 ? [bin[1] / bin[0], bin[2] / bin[0], bin[3] / bin[0]] : null
+  // pass 2: group everything that is clearly not the ground. 12 hue groups + 1 for dark, unsaturated ink.
+  const INK = 12
+  const groups: [number, number, number, number][] = Array.from({ length: 13 }, () => [0, 0, 0, 0])
+  for (let i = 0; i < px.length; i += 4) {
+    const c: Rgb = [px[i]! / 255, px[i + 1]! / 255, px[i + 2]! / 255]
+    if (distance(c, ground) < MIN_SPREAD) continue
+    const [h, s, v] = rgbToHsv(c[0], c[1], c[2])
+    const saturated = s > 0.25 && v > 0.2
+    if (!saturated && v > 0.45) continue // pale greys and highlights make poor accents
+    const group = groups[saturated ? Math.floor(h * 12) % 12 : INK]!
+    // vivid pixels count for more, so a small bright bird outweighs a large dull shadow
+    const weight = saturated ? 0.35 + s * v : 0.35
+    group[0] += weight
+    group[1] += weight * c[0]
+    group[2] += weight * c[1]
+    group[3] += weight * c[2]
   }
-  const first = order[0]!
-  const second = order
-    .slice(1)
-    .find((i) => Math.min((i - first + 12) % 12, (first - i + 12) % 12) >= 2 && bins[i]![0] > 0.5)
-  const a = colour(first) ?? darkest
-  const b = colour(second) ?? a
+  const candidates = groups
+    .filter((g) => g[0] > 4)
+    .map((g) => ({ weight: g[0], colour: [g[1] / g[0], g[2] / g[0], g[3] / g[0]] as Rgb }))
+
+  // each pick maximises (how common) x (how far from the colours already chosen)
+  const pick = (chosen: Rgb[]): Rgb | null => {
+    let best: Rgb | null = null
+    let bestScore = 0
+    for (const { weight, colour } of candidates) {
+      const spread = Math.min(...chosen.map((c) => distance(colour, c)))
+      if (spread < MIN_SPREAD) continue
+      const score = Math.sqrt(weight) * spread
+      if (score > bestScore) {
+        bestScore = score
+        best = colour
+      }
+    }
+    return best
+  }
+  // fallbacks for near-monochrome images: ink black, then a mid tone between ink and ground
+  const ink: Rgb = [0.12, 0.12, 0.14]
+  const a = pick([ground]) ?? ink
+  const mid: Rgb = [(a[0] + ground[0]) / 2, (a[1] + ground[1]) / 2, (a[2] + ground[2]) / 2]
+  const b = pick([ground, a]) ?? (distance(ink, a) >= MIN_SPREAD && distance(ink, ground) >= MIN_SPREAD ? ink : mid)
   return [rgbToHex(ground), rgbToHex(a), rgbToHex(b)]
 }
