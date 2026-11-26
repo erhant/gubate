@@ -413,6 +413,20 @@ a.chip {
   background: var(--ink);
   color: var(--paper);
 }
+.search-toggle {
+  width: 44px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.search {
+  max-width: 460px;
+}
+/* the page already offers a way to clear and close the box */
+.search input::-webkit-search-cancel-button {
+  display: none;
+}
 .series-line {
   font-size: 0.9rem;
   color: var(--seal);

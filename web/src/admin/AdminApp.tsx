@@ -51,18 +51,19 @@ function message(e: unknown): string {
 export default function AdminApp() {
   const [state, setState] = useState<"loading" | "unconfigured" | "login" | "ready">("loading")
   const [site, setSite] = useState<SiteData | null>(null)
-  const [base, setBase] = useState("")
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [tab, setTab] = useState<Tab>("resimler")
   const [editing, setEditing] = useState<string | null>(null)
   const latest = useRef<SiteData | null>(null)
+  // read at the moment of saving: an upload that started before another save must not send the older value
+  const base = useRef("")
 
   const load = async () => {
     const data = await admin.getSite()
     put(data)
-    setBase(data.updatedAt)
+    base.current = data.updatedAt
     setDirty(false)
     setState("ready")
   }
@@ -96,21 +97,31 @@ export default function AdminApp() {
     put(draft)
     setDirty(true)
   }
+  /** Applies a change to the document as it is now (not as it was when an upload began) and saves it. */
+  const saveWith = (change: (draft: SiteData) => void) => {
+    if (!latest.current) return Promise.resolve(false)
+    const draft = clone(latest.current)
+    change(draft)
+    return save(draft)
+  }
 
-  const save = async (doc: SiteData | null = site) => {
-    if (!doc) return
+  /** Resolves to whether the document was saved. */
+  const save = async (doc: SiteData | null = latest.current): Promise<boolean> => {
+    if (!doc) return false
     setSaving(true)
     setError("")
     // keep the document on screen even if saving fails, so nothing she did is lost
     put(doc)
     try {
-      const saved = await admin.saveSite(doc, base)
+      const saved = await admin.saveSite(doc, base.current)
       put(saved)
-      setBase(saved.updatedAt)
+      base.current = saved.updatedAt
       setDirty(false)
+      return true
     } catch (e) {
       setDirty(true)
       setError(message(e))
+      return false
     } finally {
       setSaving(false)
     }
@@ -169,11 +180,11 @@ export default function AdminApp() {
             ))}
           </div>
           {tab === "resimler" && (
-            <Paintings site={site} update={update} onEdit={setEditing} onUploaded={save} onError={setError} />
+            <Paintings site={site} update={update} onEdit={setEditing} onUploaded={saveWith} onError={setError} />
           )}
           {tab === "anasayfa" && <Featured site={site} update={update} />}
           {tab === "seriler" && (
-            <SeriesTab site={site} update={update} onEdit={setEditing} onUploaded={save} onError={setError} />
+            <SeriesTab site={site} update={update} onEdit={setEditing} onUploaded={saveWith} onError={setError} />
           )}
           {tab === "yazilar" && <Texts site={site} update={update} />}
         </>
@@ -290,12 +301,23 @@ function addToSeries(doc: SiteData, seriesId: string, paintingId: string) {
 interface UploadProps {
   site: SiteData
   onEdit: (id: string) => void
-  onUploaded: (doc: SiteData) => Promise<void>
+  onUploaded: (change: (draft: SiteData) => void) => Promise<boolean>
   onError: (m: string) => void
 }
 
+/** Why a photo could not be prepared or uploaded, in words she can act on. */
+function uploadFailure(e: unknown, uploading: boolean): string {
+  if (e instanceof ApiError) return message(e)
+  if (e instanceof ImageDecodeError)
+    return e.format === "HEIC"
+      ? "Bu cihaz HEIC biçimindeki fotoğrafı açamadı. Fotoğrafı JPEG olarak paylaşıp tekrar deneyin ya da Ayarlar > Kamera > Biçimler bölümünde “En Uyumlu” seçeneğini açın."
+      : `Bu dosya resim olarak açılamadı (${e.format}). JPEG ya da PNG bir fotoğraf deneyin.`
+  if (uploading) return "Yükleme yarıda kesildi. İnternet bağlantısını kontrol edip tekrar deneyin."
+  return `Resim hazırlanırken beklenmeyen bir hata oluştu: ${e instanceof Error ? e.message : String(e)}`
+}
+
 /** Resize, upload and save a new painting, then open it for editing. `place` can file it somewhere first. */
-function useUpload({ site, onEdit, onUploaded, onError }: UploadProps) {
+function useUpload({ onEdit, onUploaded, onError }: Omit<UploadProps, "site">) {
   const [progress, setProgress] = useState("")
   const run = async (file: File, place?: (doc: SiteData, painting: Painting) => void) => {
     onError("")
@@ -325,23 +347,15 @@ function useUpload({ site, onEdit, onUploaded, onError }: UploadProps) {
         images,
       }
       // saved straight away so an uploaded photo is never lost or left orphaned
-      const doc = clone(site)
-      doc.paintings.unshift(painting)
-      place?.(doc, painting)
       setProgress("Kaydediliyor…")
-      await onUploaded(doc)
-      onEdit(id)
+      const saved = await onUploaded((doc) => {
+        doc.paintings.unshift(painting)
+        place?.(doc, painting)
+      })
+      // a failed save has already put its own message on screen
+      if (saved) onEdit(id)
     } catch (e) {
-      // say what actually went wrong: a file the browser cannot open, a dropped connection, or something else
-      if (e instanceof ApiError) onError(message(e))
-      else if (e instanceof ImageDecodeError)
-        onError(
-          e.format === "HEIC"
-            ? "Bu cihaz HEIC biçimindeki fotoğrafı açamadı. Fotoğrafı JPEG olarak paylaşıp tekrar deneyin ya da Ayarlar > Kamera > Biçimler bölümünde “En Uyumlu” seçeneğini açın."
-            : `Bu dosya resim olarak açılamadı (${e.format}). JPEG ya da PNG bir fotoğraf deneyin.`
-        )
-      else if (uploading) onError("Yükleme yarıda kesildi. İnternet bağlantısını kontrol edip tekrar deneyin.")
-      else onError(`Resim hazırlanırken beklenmeyen bir hata oluştu: ${e instanceof Error ? e.message : String(e)}`)
+      onError(uploadFailure(e, uploading))
     } finally {
       setProgress("")
     }

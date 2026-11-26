@@ -7,6 +7,17 @@ import { details, SoldBadge } from "./shared"
 /** What the gallery is showing: everything, or one series in its own order. */
 export type GalleryFilter = { kind: "all" } | { kind: "series"; id: string }
 
+const TR: Record<string, string> = { ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u" }
+/** Lower-cased by Turkish rules and without accents, so "cicek" finds "Çiçek" and "IRIS" finds "İris". */
+const fold = (s: string) =>
+  s
+    .toLocaleLowerCase("tr")
+    .replace(/[çğıöşü]/g, (c) => TR[c] ?? c)
+    .trim()
+
+// kept while the page is open, so the results are still there after looking at one painting and coming back
+let remembered = ""
+
 /** One, two or three columns depending on how wide the gallery is. */
 function useColumnCount() {
   const ref = useRef<HTMLDivElement>(null)
@@ -52,6 +63,25 @@ export function Gallery({ site, filter }: { site: SiteData; filter: GalleryFilte
   if (filter.kind === "series")
     shown = (current?.paintingIds ?? []).map((id) => byId.get(id)).filter((p): p is Painting => !!p)
 
+  const [query, setQuery] = useState(remembered)
+  const [searching, setSearching] = useState(remembered !== "")
+  const search = (value: string) => {
+    remembered = value
+    setQuery(value)
+  }
+  const inFilter = shown.length
+  const words = fold(query).split(/\s+/).filter(Boolean)
+  if (words.length > 0) {
+    // Every word has to appear in the title, the technique or the name of the series, or be the year.
+    // Sizes are left out, and the year has to match whole: otherwise the "2" of "Kuşlar 2" would find every painting.
+    const seriesOf = new Map<string, string>()
+    for (const s of site.series) for (const id of s.paintingIds) seriesOf.set(id, s.name)
+    shown = shown.filter((p) => {
+      const text = fold(`${p.title} ${p.technique} ${seriesOf.get(p.id) ?? ""}`)
+      return words.every((w) => text.includes(w) || w === String(p.year))
+    })
+  }
+
   const chip = (label: string, to: string, active: boolean) => (
     <a key={to} className="chip" href={to} aria-current={active ? "true" : undefined}>
       {label}
@@ -62,19 +92,68 @@ export function Gallery({ site, filter }: { site: SiteData; filter: GalleryFilte
     <div className="stack">
       <header className="gallery-head">
         <h1>Galeri</h1>
-        {series.length > 0 && (
-          <nav className="chips" aria-label="Seriler">
-            {chip("Tümü", href("galeri"), filter.kind === "all")}
-            {series.map((s) => chip(s.name, href("seri", s.id), filter.kind === "series" && filter.id === s.id))}
-          </nav>
-        )}
+        <div className="chips">
+          {series.length > 0 && (
+            <nav className="chips" aria-label="Seriler">
+              {chip("Tümü", href("galeri"), filter.kind === "all")}
+              {series.map((s) => chip(s.name, href("seri", s.id), filter.kind === "series" && filter.id === s.id))}
+            </nav>
+          )}
+          <button
+            type="button"
+            className="chip search-toggle"
+            aria-label="Resim ara"
+            aria-expanded={searching}
+            aria-pressed={searching}
+            onClick={() => {
+              // closing the box also ends the search
+              if (searching) search("")
+              setSearching(!searching)
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M15.5 15.5 21 21" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
       </header>
-      {current && (
-        <p className="muted">
-          {current.name} serisi · {shown.length} resim
-        </p>
+      {searching && (
+        <div className="search">
+          <input
+            type="search"
+            aria-label="Resim ara"
+            placeholder="Resim adı, teknik ya da yıl"
+            enterKeyHint="search"
+            autoComplete="off"
+            autoFocus={query === ""}
+            value={query}
+            onChange={(e) => search(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                search("")
+                setSearching(false)
+              }
+              // puts the on-screen keyboard away so the results can be seen
+              if (e.key === "Enter") e.currentTarget.blur()
+            }}
+          />
+        </div>
       )}
-      {shown.length === 0 && <p className="muted">Henüz bir resim yok.</p>}
+      {words.length > 0 ? (
+        <p className="muted" role="status">
+          {shown.length > 0
+            ? `“${query.trim()}” için ${shown.length} resim${current ? ` · ${current.name} serisinde` : ""}`
+            : `“${query.trim()}” için resim bulunamadı${current ? ` · ${current.name} serisinde` : ""}.`}
+        </p>
+      ) : (
+        current && (
+          <p className="muted">
+            {current.name} serisi · {shown.length} resim
+          </p>
+        )
+      )}
+      {inFilter === 0 && <p className="muted">Henüz bir resim yok.</p>}
       <div className="grid" ref={gridRef}>
         {distribute(shown, columnCount).map((column, i) => (
           <div key={i} className="grid-column">
