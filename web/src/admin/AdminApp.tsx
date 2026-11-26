@@ -37,6 +37,7 @@ function message(e: unknown): string {
     if (e.code === "wrong_password") return "Şifre yanlış."
     if (e.code === "stale") return "Başka bir yerden değişiklik yapılmış. Sayfayı yenileyip tekrar deneyin."
     if (e.code === "too_large") return "Resim çok büyük."
+    if (e.code === "storage_not_configured") return "Depolama bağlı değil: Vercel projesine bir Blob deposu bağlanmalı."
     if (e.status === 401) return "Oturum süresi dolmuş. Sayfayı yenileyip tekrar giriş yapın."
   }
   return "Bir şeyler ters gitti. Lütfen tekrar deneyin."

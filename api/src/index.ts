@@ -1,10 +1,10 @@
 import { Hono } from "hono"
-import { adminConfigured, endSession, isAdmin, passwordMatches, requireAdmin, startSession } from "./auth"
-import { devSeed } from "./devSeed"
-import { seed } from "./seed"
-import { createStorage, safeName } from "./storage"
-import type { Painting, SiteData } from "./types"
-import { sanitizeSite } from "./validate"
+import { adminConfigured, endSession, isAdmin, passwordMatches, requireAdmin, startSession } from "./auth.js"
+import { devSeed } from "./devSeed.js"
+import { seed } from "./seed.js"
+import { createStorage, safeName, StorageNotConfiguredError } from "./storage.js"
+import type { Painting, SiteData } from "./types.js"
+import { sanitizeSite } from "./validate.js"
 
 const storage = createStorage()
 
@@ -103,6 +103,7 @@ const app = new Hono()
 app.route("/api", api)
 app.route("/", api)
 app.onError((err, c) => {
+  if (err instanceof StorageNotConfiguredError) return c.json({ error: "storage_not_configured" }, 503)
   console.error(err)
   return c.json({ error: "server_error" }, 500)
 })

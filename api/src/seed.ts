@@ -1,4 +1,4 @@
-import type { SiteData } from "./types"
+import type { SiteData } from "./types.js"
 
 // The starting document, used until the first save from the admin panel.
 // It has no paintings: they are uploaded through the panel and stored with the images, never in git.

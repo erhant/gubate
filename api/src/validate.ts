@@ -1,4 +1,4 @@
-import type { Group, Painting, Series, SiteData, TimelineEntry } from "./types"
+import type { Group, Painting, Series, SiteData, TimelineEntry } from "./types.js"
 
 const HEX = /^#[0-9a-fA-F]{6}$/
 const ID = /^[a-z0-9][a-z0-9-]{0,63}$/

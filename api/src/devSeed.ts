@@ -1,5 +1,5 @@
-import { seed } from "./seed"
-import type { Painting, SiteData } from "./types"
+import { seed } from "./seed.js"
+import type { Painting, SiteData } from "./types.js"
 
 // Local development only: three generated placeholder images (web/public/dev) so the site has
 // something to show before anything is uploaded. Production starts from the empty seed.

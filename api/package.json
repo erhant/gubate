@@ -10,13 +10,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@vercel/blob": "latest",
-    "hono": "latest"
+    "@vercel/blob": "^2.9.0",
+    "hono": "^4.13.22"
   },
   "devDependencies": {
-    "@hono/node-server": "latest",
-    "@types/node": "latest",
-    "tsx": "latest",
+    "@hono/node-server": "^2.1.11",
+    "@types/node": "^26.6.11",
+    "tsx": "^4.23.15",
     "typescript-native": "npm:typescript@^7.0.0"
   }
 }

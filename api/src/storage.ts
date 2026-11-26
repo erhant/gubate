@@ -1,4 +1,4 @@
-import type { SiteData } from "./types"
+import type { SiteData } from "./types.js"
 
 /**
  * Where the site document and the images live.
@@ -6,7 +6,7 @@ import type { SiteData } from "./types"
  * - Locally: files under api/.data, images served from /uploads/*.
  */
 export interface Storage {
-  kind: "blob" | "local"
+  kind: "blob" | "local" | "none"
   readSite(): Promise<SiteData | null>
   writeSite(data: SiteData): Promise<void>
   /** stores an image and returns its public URL */
@@ -120,7 +120,26 @@ function localStorage(): Storage {
   }
 }
 
+/** Thrown when something must be stored but no storage is connected (Vercel without a Blob store). */
+export class StorageNotConfiguredError extends Error {
+  constructor() {
+    super("No storage is configured: connect a Vercel Blob store to the project.")
+  }
+}
+
+/**
+ * Vercel's filesystem is read-only, so local files are not an option there. Without a Blob
+ * store the site still renders (from the empty seed), and any save fails with a clear error.
+ */
+function noStorage(): Storage {
+  const fail = async (): Promise<never> => {
+    throw new StorageNotConfiguredError()
+  }
+  return { kind: "none", readSite: async () => null, writeSite: fail, putImage: fail, deleteImages: async () => {} }
+}
+
 export function createStorage(): Storage {
   const hasBlob = !!(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN)
-  return hasBlob ? blobStorage() : localStorage()
+  if (hasBlob) return blobStorage()
+  return process.env.VERCEL ? noStorage() : localStorage()
 }
