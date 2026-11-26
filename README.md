@@ -27,8 +27,12 @@ admin panel, the site shows the seed data in `api/src/seed.ts`.
    project's environment variables.
 4. Deploy.
 
-With a Blob store connected, the API keeps `data/site.json` and the images there. Nothing else is
+With a Blob store connected, the API keeps the site document and the images there. Nothing else is
 stored anywhere, so a backup is a copy of that store.
+
+Every save writes the document twice: to `data/site.json`, which visitors read, and to a new file
+under `data/versions/`. The admin panel reads the newest version file, because a file overwritten in
+place can be served stale for up to a minute. The last 10 versions are kept and double as backups.
 
 ## Data model
 

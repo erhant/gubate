@@ -7,7 +7,11 @@ import type { SiteData } from "./types.js"
  */
 export interface Storage {
   kind: "blob" | "local" | "none"
-  readSite(): Promise<SiteData | null>
+  /**
+   * `fresh` must return the document as of the latest write, with no cache in between. The admin
+   * panel needs that: it checks for conflicting edits against what it reads here.
+   */
+  readSite(fresh?: boolean): Promise<SiteData | null>
   writeSite(data: SiteData): Promise<void>
   /** stores an image and returns its public URL */
   putImage(name: string, body: ArrayBuffer, contentType: string): Promise<string>
@@ -28,31 +32,71 @@ export function safeName(name: string): string | null {
   return SAFE_NAME.test(n) ? n : null
 }
 
+// Every save is also written under its own never-reused name. A file that is overwritten in place
+// (the pointer, data/site.json) can be served from cache for up to a minute after a write, so
+// reading it back right after saving returns the previous document. A version file has a unique
+// address and is never stale. The last few versions also serve as backups.
+const VERSIONS = "data/versions/"
+const KEEP_VERSIONS = 10
+const versionPath = (updatedAt: string) => `${VERSIONS}site-${updatedAt.replace(/[^0-9TZ]/g, "-")}.json`
+
 function blobStorage(): Storage {
   // imported lazily so local development does not need Blob credentials
   const sdk = () => import("@vercel/blob")
+  // version files seen by the last fresh read or write, oldest first; used to prune without listing again
+  let known: { pathname: string; url: string }[] = []
+
+  const readPointer = async (): Promise<SiteData | null> => {
+    const { head, BlobNotFoundError } = await sdk()
+    try {
+      const meta = await head(SITE_PATH)
+      const res = await fetch(`${meta.url}?v=${encodeURIComponent(meta.etag ?? Date.now())}`, { cache: "no-store" })
+      return res.ok ? ((await res.json()) as SiteData) : null
+    } catch (e) {
+      if (e instanceof BlobNotFoundError) return null
+      throw e
+    }
+  }
+
   return {
     kind: "blob",
-    async readSite() {
-      const { head, BlobNotFoundError } = await sdk()
-      try {
-        const meta = await head(SITE_PATH)
-        // the query string skips the CDN copy, which can lag a minute behind an overwrite
-        const res = await fetch(`${meta.url}?v=${encodeURIComponent(meta.etag ?? Date.now())}`, { cache: "no-store" })
-        return res.ok ? ((await res.json()) as SiteData) : null
-      } catch (e) {
-        if (e instanceof BlobNotFoundError) return null
-        throw e
+    async readSite(fresh = false) {
+      if (fresh) {
+        const { list } = await sdk()
+        const { blobs } = await list({ prefix: VERSIONS })
+        known = blobs
+          .map((b) => ({ pathname: b.pathname, url: b.url }))
+          .sort((a, b) => (a.pathname < b.pathname ? -1 : 1))
+        const latest = known[known.length - 1]
+        if (latest) {
+          const res = await fetch(latest.url, { cache: "no-store" })
+          if (res.ok) return (await res.json()) as SiteData
+        }
+        // no versions yet: this store was last written before versions existed
       }
+      return readPointer()
     },
     async writeSite(data) {
-      const { put } = await sdk()
-      await put(SITE_PATH, JSON.stringify(data), {
+      const { put, del } = await sdk()
+      const body = JSON.stringify(data)
+      const version = await put(versionPath(data.updatedAt), body, {
+        access: "public",
+        allowOverwrite: true,
+        contentType: "application/json",
+      })
+      // the pointer is what visitors read; a minute of staleness is fine for them
+      await put(SITE_PATH, body, {
         access: "public",
         allowOverwrite: true,
         contentType: "application/json",
         cacheControlMaxAge: 60,
       })
+      known.push({ pathname: version.pathname, url: version.url })
+      const old = known.slice(0, Math.max(0, known.length - KEEP_VERSIONS))
+      if (old.length) {
+        known = known.slice(old.length)
+        await del(old.map((v) => v.url)).catch((e) => console.error("could not prune old versions", e))
+      }
     },
     async putImage(name, body, contentType) {
       const { put } = await sdk()

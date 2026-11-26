@@ -39,7 +39,8 @@ function move<T>(list: T[], from: number, to: number) {
 function message(e: unknown): string {
   if (e instanceof ApiError) {
     if (e.code === "wrong_password") return "Şifre yanlış."
-    if (e.code === "stale") return "Başka bir yerden değişiklik yapılmış. Sayfayı yenileyip tekrar deneyin."
+    if (e.code === "stale")
+      return "Bu sayfa açıkken başka bir cihazdan değişiklik kaydedilmiş. Sayfayı yenileyin; buradaki kaydedilmemiş değişiklikler kaybolur."
     if (e.code === "too_large") return "Resim çok büyük."
     if (e.code === "storage_not_configured") return "Depolama bağlı değil: Vercel projesine bir Blob deposu bağlanmalı."
     if (e.status === 401) return "Oturum süresi dolmuş. Sayfayı yenileyip tekrar giriş yapın."
@@ -260,6 +261,8 @@ function NumberField(props: { id: string; label: string; value: number | null; o
 }
 
 const UNTITLED = "Adsız"
+/** matches the API: a painting without a real title is not shown to visitors */
+const isUntitled = (p: Painting) => p.title.trim() === "" || p.title.trim() === UNTITLED
 /** value of the "new series" entry in the series list; never a real series id */
 const NEW_SERIES = "__new__"
 
@@ -383,6 +386,7 @@ function Paintings(props: UploadProps & { update: Update }) {
             <div className="row-text">
               <strong>{p.title || "Adsız"}</strong>
               <span className="row-badges">
+                {isUntitled(p) && <span className="badge quiet">Başlıksız · sitede görünmez</span>}
                 {p.hidden && <span className="badge quiet">Gizli</span>}
                 {p.sold && <span className="badge">Satıldı</span>}
               </span>
@@ -485,7 +489,11 @@ function PaintingEditor({
         style={{ aspectRatio: painting.aspect }}
       />
       <div className="panel form">
-        <Field id="p-title" label="Başlık">
+        <Field
+          id="p-title"
+          label="Başlık"
+          hint={isUntitled(painting) ? "Başlığı olmayan resim sitede görünmez. Bir başlık yazın." : undefined}
+        >
           <input id="p-title" value={painting.title} onChange={(e) => set((p) => (p.title = e.target.value))} />
         </Field>
         <Field id="p-technique" label="Teknik" hint="Örnek: Kâğıt üzerine mürekkep ve suluboya">

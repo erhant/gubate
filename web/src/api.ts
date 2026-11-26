@@ -17,7 +17,29 @@ export class ApiError extends Error {
   }
 }
 
-export const getSite = () => fetch("/api/site").then((r) => json<SiteData>(r))
+// After a save, this browser asks for that exact version, so the person who made a change sees it
+// on the site at once while everyone else gets the cached copy (at most a couple of minutes old).
+const REV_KEY = "gubate:rev"
+const savedRev = (): string => {
+  try {
+    return localStorage.getItem(REV_KEY) ?? ""
+  } catch {
+    return ""
+  }
+}
+const rememberRev = (site: SiteData): SiteData => {
+  try {
+    localStorage.setItem(REV_KEY, site.updatedAt)
+  } catch {
+    // private browsing: the site is simply a little stale for her too
+  }
+  return site
+}
+
+export const getSite = () => {
+  const rev = savedRev()
+  return fetch(rev ? `/api/site?v=${encodeURIComponent(rev)}` : "/api/site").then((r) => json<SiteData>(r))
+}
 
 export const admin = {
   me: () => fetch("/api/admin/me").then((r) => json<{ configured: boolean; signedIn: boolean }>(r)),
@@ -34,7 +56,9 @@ export const admin = {
       method: "PUT",
       headers: { "Content-Type": "application/json", "X-Base-Updated-At": baseUpdatedAt },
       body: JSON.stringify(site),
-    }).then((r) => json<SiteData>(r)),
+    })
+      .then((r) => json<SiteData>(r))
+      .then(rememberRev),
   upload: (name: string, blob: Blob) =>
     fetch(`/api/admin/upload?name=${encodeURIComponent(name)}`, {
       method: "POST",
