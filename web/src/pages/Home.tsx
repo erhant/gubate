@@ -19,9 +19,7 @@ export function Home({ site }: { site: SiteData }) {
       <section className="hero">
         <div className="hero-text">
           <p className="eyebrow">Sumi-e · mürekkep resmi</p>
-          <h1>
-            Bir dal, bir kuş, <em>gerisi boşluk.</em>
-          </h1>
+          <h1>İzler</h1>
           <p className="lede">
             Gubate, ressam Gülçin Balta Tezcan tarafından mürekkep ve suluboya ile yapılan resimlerin evi. Her resim
             birkaç fırça darbesiyle başlar. Kâğıdın boş kalan yeri de resmin parçasıdır.

@@ -113,7 +113,16 @@ p {
 .main {
   flex: 999 1 560px;
   min-width: 0;
-  padding: 56px 48px 96px 24px;
+  padding: 56px 48px 32px 24px;
+  display: flex;
+  flex-direction: column;
+}
+/* pushed to the bottom of the window on short pages */
+.footer {
+  margin-top: auto;
+  padding-top: 96px;
+  font-size: 0.82rem;
+  color: var(--muted);
 }
 .brand {
   display: flex;
@@ -191,7 +200,7 @@ p {
     border-bottom-color: var(--seal);
   }
   .main {
-    padding: 24px 16px 72px;
+    padding: 24px 16px 24px;
   }
 }
 

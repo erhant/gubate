@@ -75,6 +75,7 @@ export function App() {
             {site && page === "galeri" && route[1] && <Viewer site={site} id={route[1]} />}
             {site && page === "hakkinda" && <About site={site} />}
             {site && page === "iletisim" && <Contact site={site} />}
+            <footer className="footer">© {new Date().getFullYear()} Gülçin Balta Tezcan · Tüm hakları saklıdır.</footer>
           </main>
         </div>
       )}
