@@ -3,7 +3,7 @@ import { admin, ApiError } from "../api"
 import { InkPreview, setInk } from "../ink/InkBackground"
 import { href } from "../router"
 import type { Painting, Series, SiteData } from "../types"
-import { prepareImage, suggestFromUrl } from "./imageTools"
+import { ImageDecodeError, prepareImage, suggestFromUrl } from "./imageTools"
 
 type Tab = "resimler" | "anasayfa" | "seriler" | "yazilar"
 type Update = (change: (draft: SiteData) => void) => void
@@ -24,6 +24,11 @@ const slug = (s: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 40)
 const newId = (prefix: string) => `${prefix}-${Date.now().toString(36)}`
+
+/** Deep copy of the site document. Older iPads have no structuredClone; the document is plain JSON, so this is equivalent. */
+function clone<T>(value: T): T {
+  return typeof structuredClone === "function" ? structuredClone(value) : (JSON.parse(JSON.stringify(value)) as T)
+}
 
 function move<T>(list: T[], from: number, to: number) {
   if (to < 0 || to >= list.length) return
@@ -85,7 +90,7 @@ export default function AdminApp() {
   }
   const update: Update = (change) => {
     if (!latest.current) return
-    const draft = structuredClone(latest.current)
+    const draft = clone(latest.current)
     change(draft)
     put(draft)
     setDirty(true)
@@ -291,12 +296,14 @@ function useUpload({ site, onEdit, onUploaded, onError }: UploadProps) {
   const [progress, setProgress] = useState("")
   const run = async (file: File, place?: (doc: SiteData, painting: Painting) => void) => {
     onError("")
+    let uploading = false
     try {
       setProgress("Resim hazırlanıyor…")
       const prepared = await prepareImage(file)
       const id = newId("resim")
       const images = { small: "", medium: "", large: "" }
       let step = 0
+      uploading = true
       for (const size of ["small", "medium", "large"] as const) {
         setProgress(`Yükleniyor… (${++step}/3)`)
         images[size] = (await admin.upload(`${id}-${size}.jpg`, prepared[size])).url
@@ -315,14 +322,23 @@ function useUpload({ site, onEdit, onUploaded, onError }: UploadProps) {
         images,
       }
       // saved straight away so an uploaded photo is never lost or left orphaned
-      const doc = structuredClone(site)
+      const doc = clone(site)
       doc.paintings.unshift(painting)
       place?.(doc, painting)
       setProgress("Kaydediliyor…")
       await onUploaded(doc)
       onEdit(id)
     } catch (e) {
-      onError(e instanceof ApiError ? message(e) : "Bu resim okunamadı. JPEG ya da PNG bir fotoğraf deneyin.")
+      // say what actually went wrong: a file the browser cannot open, a dropped connection, or something else
+      if (e instanceof ApiError) onError(message(e))
+      else if (e instanceof ImageDecodeError)
+        onError(
+          e.format === "HEIC"
+            ? "Bu cihaz HEIC biçimindeki fotoğrafı açamadı. Fotoğrafı JPEG olarak paylaşıp tekrar deneyin ya da Ayarlar > Kamera > Biçimler bölümünde “En Uyumlu” seçeneğini açın."
+            : `Bu dosya resim olarak açılamadı (${e.format}). JPEG ya da PNG bir fotoğraf deneyin.`
+        )
+      else if (uploading) onError("Yükleme yarıda kesildi. İnternet bağlantısını kontrol edip tekrar deneyin.")
+      else onError(`Resim hazırlanırken beklenmeyen bir hata oluştu: ${e instanceof Error ? e.message : String(e)}`)
     } finally {
       setProgress("")
     }
@@ -338,7 +354,7 @@ function UploadButton(props: { id: string; label: string; progress: string; onFi
         id={props.id}
         className="visually-hidden"
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/*"
         onChange={(e) => {
           const file = e.target.files?.[0]
           // cleared so that picking the same photo again still fires a change

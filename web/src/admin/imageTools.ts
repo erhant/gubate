@@ -12,6 +12,25 @@ export interface PreparedImage {
 // Long side in pixels. The server accepts at most ~4.3 MB per image, which a 2600 px JPEG stays well under.
 const SIZES = { small: 640, medium: 1400, large: 2600 } as const
 
+/** Thrown when the browser cannot open the chosen file as an image. `format` is what the file really is. */
+export class ImageDecodeError extends Error {
+  constructor(public format: string) {
+    super(`cannot decode ${format} image`)
+  }
+}
+
+/** Identifies an image by its first bytes: the file name and the reported type cannot be trusted. */
+async function sniff(file: Blob): Promise<string> {
+  const b = new Uint8Array(await file.slice(0, 16).arrayBuffer())
+  const text = (from: number, to: number) => String.fromCharCode(...b.slice(from, to))
+  if (b[0] === 0xff && b[1] === 0xd8) return "JPEG"
+  if (b[0] === 0x89 && text(1, 4) === "PNG") return "PNG"
+  if (text(0, 4) === "RIFF" && text(8, 12) === "WEBP") return "WebP"
+  if (text(0, 3) === "GIF") return "GIF"
+  if (text(4, 8) === "ftyp") return text(8, 12).startsWith("avi") ? "AVIF" : "HEIC"
+  return "bilinmeyen biçim"
+}
+
 async function decode(
   file: Blob
 ): Promise<{ source: CanvasImageSource; width: number; height: number; close: () => void }> {
@@ -24,11 +43,22 @@ async function decode(
       // fall through to <img>
     }
   }
+  // <img> with plain load/error events is the most forgiving path: some Safari versions reject
+  // img.decode() for large photos that they can still load and draw.
   const url = URL.createObjectURL(file)
-  const img = new Image()
-  img.src = url
-  await img.decode()
-  return { source: img, width: img.naturalWidth, height: img.naturalHeight, close: () => URL.revokeObjectURL(url) }
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image()
+      el.onload = () => resolve(el)
+      el.onerror = () => reject(new Error("image load failed"))
+      el.src = url
+    })
+    if (!img.naturalWidth || !img.naturalHeight) throw new Error("empty image")
+    return { source: img, width: img.naturalWidth, height: img.naturalHeight, close: () => URL.revokeObjectURL(url) }
+  } catch {
+    URL.revokeObjectURL(url)
+    throw new ImageDecodeError(await sniff(file).catch(() => "bilinmeyen biçim"))
+  }
 }
 
 function encode(source: CanvasImageSource, width: number, height: number, quality: number): Promise<Blob> {
