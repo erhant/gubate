@@ -17,6 +17,6 @@
     "@hono/node-server": "latest",
     "@types/node": "latest",
     "tsx": "latest",
-    "typescript": "latest"
+    "typescript-native": "npm:typescript@^7.0.0"
   }
 }
