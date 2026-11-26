@@ -26,7 +26,7 @@ export function App() {
   const [failed, setFailed] = useState(false)
   const page = route[0] ?? ""
   const isAdmin = page === "yonetim"
-  // group and series views are part of the gallery as far as the menu is concerned
+  // a series view is part of the gallery as far as the menu is concerned ("grup" is the old address)
   const section = page === "grup" || page === "seri" ? "galeri" : page
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export function App() {
             {!site && !failed && <p className="status">Yükleniyor…</p>}
             {site && page === "" && <Home site={site} />}
             {site && page === "galeri" && !route[1] && <Gallery site={site} filter={{ kind: "all" }} />}
-            {site && page === "grup" && route[1] && <Gallery site={site} filter={{ kind: "group", id: route[1] }} />}
+            {site && page === "grup" && route[1] && <Gallery site={site} filter={{ kind: "series", id: route[1] }} />}
             {site && page === "seri" && route[1] && <Gallery site={site} filter={{ kind: "series", id: route[1] }} />}
             {site && page === "galeri" && route[1] && <Viewer site={site} id={route[1]} />}
             {site && page === "hakkinda" && <About site={site} />}

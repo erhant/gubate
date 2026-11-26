@@ -4,8 +4,8 @@ import { href } from "../router"
 import type { Painting, SiteData } from "../types"
 import { details, SoldBadge } from "./shared"
 
-/** What the gallery is showing: everything, one group, or one series in its own order. */
-export type GalleryFilter = { kind: "all" } | { kind: "group"; id: string } | { kind: "series"; id: string }
+/** What the gallery is showing: everything, or one series in its own order. */
+export type GalleryFilter = { kind: "all" } | { kind: "series"; id: string }
 
 /** One, two or three columns depending on how wide the gallery is. */
 function useColumnCount() {
@@ -43,13 +43,11 @@ function distribute(paintings: Painting[], count: number): Painting[][] {
 export function Gallery({ site, filter }: { site: SiteData; filter: GalleryFilter }) {
   const [gridRef, columnCount] = useColumnCount()
   const byId = new Map(site.paintings.map((p) => [p.id, p]))
-  // only offer groups and series that have at least one visible painting
-  const groups = site.groups.filter((g) => site.paintings.some((p) => p.groupId === g.id))
+  // only offer series that have at least one visible painting
   const series = site.series.filter((s) => s.paintingIds.some((id) => byId.has(id)))
   const current = filter.kind === "series" ? series.find((s) => s.id === filter.id) : undefined
 
   let shown = site.paintings
-  if (filter.kind === "group") shown = site.paintings.filter((p) => p.groupId === filter.id)
   // a series keeps its own order, independent of the gallery order
   if (filter.kind === "series")
     shown = (current?.paintingIds ?? []).map((id) => byId.get(id)).filter((p): p is Painting => !!p)
@@ -64,20 +62,12 @@ export function Gallery({ site, filter }: { site: SiteData; filter: GalleryFilte
     <div className="stack">
       <header className="gallery-head">
         <h1>Galeri</h1>
-        <div className="chip-rows">
-          {(groups.length > 0 || series.length > 0) && (
-            <nav className="chips" aria-label="Gruplar">
-              {chip("Tümü", href("galeri"), filter.kind === "all")}
-              {groups.map((g) => chip(g.name, href("grup", g.id), filter.kind === "group" && filter.id === g.id))}
-            </nav>
-          )}
-          {series.length > 0 && (
-            <nav className="chips" aria-label="Seriler">
-              <span className="chips-label">Seriler</span>
-              {series.map((s) => chip(s.name, href("seri", s.id), filter.kind === "series" && filter.id === s.id))}
-            </nav>
-          )}
-        </div>
+        {series.length > 0 && (
+          <nav className="chips" aria-label="Seriler">
+            {chip("Tümü", href("galeri"), filter.kind === "all")}
+            {series.map((s) => chip(s.name, href("seri", s.id), filter.kind === "series" && filter.id === s.id))}
+          </nav>
+        )}
       </header>
       {current && (
         <p className="muted">

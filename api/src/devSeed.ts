@@ -17,7 +17,6 @@ const placeholder = (
   widthCm,
   heightCm,
   year: 2026,
-  groupId: null,
   sold: n === 3,
   hidden: false,
   palette: [ground, accent, "#1e1c20"],

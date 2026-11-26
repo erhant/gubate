@@ -6,21 +6,11 @@ export const seed: SiteData = {
   version: 1,
   updatedAt: "2026-11-26T00:00:00.000Z",
   paintings: [],
-  groups: [
-    {
-      id: "kuslar",
-      name: "Kuşlar",
-    },
-    {
-      id: "cicekler",
-      name: "Çiçekler",
-    },
-    {
-      id: "bocekler",
-      name: "Böcekler",
-    },
+  series: [
+    { id: "kuslar", name: "Kuşlar", paintingIds: [] },
+    { id: "cicekler", name: "Çiçekler", paintingIds: [] },
+    { id: "bocekler", name: "Böcekler", paintingIds: [] },
   ],
-  series: [],
   featured: [],
   about: {
     lead: "Gülçin Balta Tezcan emekli bir ressam ve sanat eğitimcisi. Bugün fırçasını sumi-e için kullanıyor.",

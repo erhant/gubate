@@ -10,7 +10,6 @@ export interface Painting {
   widthCm: number | null
   heightCm: number | null
   year: number | null
-  groupId: string | null
   sold: boolean
   /** hidden paintings are only visible in the admin panel */
   hidden: boolean
@@ -21,15 +20,10 @@ export interface Painting {
   images: { small: string; medium: string; large: string }
 }
 
-export interface Group {
-  id: string
-  name: string
-}
-
 export interface Series {
   id: string
   name: string
-  /** member painting ids, in the series' own order; a painting can be in several series */
+  /** member painting ids, in the series' own order; a painting is in at most one series */
   paintingIds: string[]
 }
 
@@ -43,7 +37,6 @@ export interface SiteData {
   updatedAt: string
   /** array order is gallery order */
   paintings: Painting[]
-  groups: Group[]
   series: Series[]
   /** painting ids shown on the welcome page, in order */
   featured: string[]

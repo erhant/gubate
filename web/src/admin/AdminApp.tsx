@@ -2,16 +2,15 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { admin, ApiError } from "../api"
 import { InkPreview, setInk } from "../ink/InkBackground"
 import { href } from "../router"
-import type { Group, Painting, Series, SiteData } from "../types"
+import type { Painting, Series, SiteData } from "../types"
 import { prepareImage, suggestFromUrl } from "./imageTools"
 
-type Tab = "resimler" | "anasayfa" | "gruplar" | "seriler" | "yazilar"
+type Tab = "resimler" | "anasayfa" | "seriler" | "yazilar"
 type Update = (change: (draft: SiteData) => void) => void
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "resimler", label: "Resimler" },
   { key: "anasayfa", label: "Ana sayfa" },
-  { key: "gruplar", label: "Gruplar" },
   { key: "seriler", label: "Seriler" },
   { key: "yazilar", label: "Yazılar" },
 ]
@@ -143,7 +142,6 @@ export default function AdminApp() {
         <PaintingEditor
           key={painting.id}
           painting={painting}
-          groups={site.groups}
           series={site.series}
           update={update}
           onClose={() => setEditing(null)}
@@ -168,7 +166,6 @@ export default function AdminApp() {
             <Paintings site={site} update={update} onEdit={setEditing} onUploaded={save} onError={setError} />
           )}
           {tab === "anasayfa" && <Featured site={site} update={update} />}
-          {tab === "gruplar" && <Groups site={site} update={update} />}
           {tab === "seriler" && (
             <SeriesTab site={site} update={update} onEdit={setEditing} onUploaded={save} onError={setError} />
           )}
@@ -258,17 +255,24 @@ function NumberField(props: { id: string; label: string; value: number | null; o
 }
 
 const UNTITLED = "Adsız"
-/** value of the "new group" entry in the group list; never a real group id */
-const NEW_GROUP = "__new__"
+/** value of the "new series" entry in the series list; never a real series id */
+const NEW_SERIES = "__new__"
+
+/** Takes a painting out of whatever series it is in. */
+function leaveSeries(doc: SiteData, paintingId: string) {
+  for (const s of doc.series) s.paintingIds = s.paintingIds.filter((id) => id !== paintingId)
+}
 
 /**
- * Adds a painting to a series (at the end). A painting that has no real title yet is named
- * after the series and its position: "Kuşlar 2", "Kuşlar 3", …
+ * Puts a painting in a series, at the end. A painting is in at most one series, so it leaves
+ * its previous one. A painting that has no real title yet is named after the series and its
+ * position: "Kuşlar 2", "Kuşlar 3", …
  */
 function addToSeries(doc: SiteData, seriesId: string, paintingId: string) {
   const series = doc.series.find((s) => s.id === seriesId)
   const painting = doc.paintings.find((p) => p.id === paintingId)
   if (!series || !painting || series.paintingIds.includes(paintingId)) return
+  leaveSeries(doc, paintingId)
   series.paintingIds.push(paintingId)
   if (painting.title.trim() === "" || painting.title === UNTITLED) {
     painting.title = `${series.name} ${series.paintingIds.length}`
@@ -304,7 +308,6 @@ function useUpload({ site, onEdit, onUploaded, onError }: UploadProps) {
         widthCm: null,
         heightCm: null,
         year: null,
-        groupId: null,
         sold: false,
         hidden: false,
         palette: prepared.palette,
@@ -400,43 +403,41 @@ function Paintings(props: UploadProps & { update: Update }) {
 
 function PaintingEditor({
   painting,
-  groups,
   series,
   update,
   onClose,
 }: {
   painting: Painting
-  groups: Group[]
   series: Series[]
   update: Update
   onClose: () => void
 }) {
   const [confirming, setConfirming] = useState(false)
   const [note, setNote] = useState("")
-  const [addingGroup, setAddingGroup] = useState(false)
-  const [groupName, setGroupName] = useState("")
+  const [addingSeries, setAddingSeries] = useState(false)
+  const [seriesName, setSeriesName] = useState("")
+  const current = series.find((x) => x.paintingIds.includes(painting.id))
   const set = (change: (p: Painting) => void) =>
     update((d) => {
       const p = d.paintings.find((x) => x.id === painting.id)
       if (p) change(p)
     })
 
-  // Creates a group from the editor and puts this painting in it. A name that already exists
-  // (ignoring case) reuses that group, so the same group is never created twice.
-  const createGroup = () => {
-    const name = groupName.trim()
+  // Creates a series from the editor and puts this painting in it. A name that already exists
+  // (ignoring case) reuses that series, so the same series is never created twice.
+  const createSeries = () => {
+    const name = seriesName.trim()
     if (!name) return
     update((d) => {
-      let group = d.groups.find((g) => g.name.trim().toLocaleLowerCase("tr") === name.toLocaleLowerCase("tr"))
-      if (!group) {
-        group = { id: newId(slug(name) || "grup"), name }
-        d.groups.push(group)
+      let target = d.series.find((x) => x.name.trim().toLocaleLowerCase("tr") === name.toLocaleLowerCase("tr"))
+      if (!target) {
+        target = { id: newId(slug(name) || "seri"), name, paintingIds: [] }
+        d.series.push(target)
       }
-      const p = d.paintings.find((x) => x.id === painting.id)
-      if (p) p.groupId = group.id
+      addToSeries(d, target.id, painting.id)
     })
-    setGroupName("")
-    setAddingGroup(false)
+    setSeriesName("")
+    setAddingSeries(false)
   }
 
   // the page background previews the colours as she changes them
@@ -493,46 +494,51 @@ function PaintingEditor({
           />
           <NumberField id="p-year" label="Yıl" value={painting.year} onValue={(v) => set((p) => (p.year = v))} />
         </div>
-        <Field id="p-group" label="Grup">
+        <Field
+          id="p-series"
+          label="Seri"
+          hint="Başlığı boş bir resim, seçtiğiniz serinin adını ve sırasını alır (örnek: “Kuşlar 2”)."
+        >
           <select
-            id="p-group"
-            value={addingGroup ? NEW_GROUP : (painting.groupId ?? "")}
+            id="p-series"
+            value={addingSeries ? NEW_SERIES : (current?.id ?? "")}
             onChange={(e) => {
               const value = e.target.value
-              setAddingGroup(value === NEW_GROUP)
-              if (value !== NEW_GROUP) set((p) => (p.groupId = value || null))
+              setAddingSeries(value === NEW_SERIES)
+              if (value === NEW_SERIES) return
+              update((d) => (value ? addToSeries(d, value, painting.id) : leaveSeries(d, painting.id)))
             }}
           >
-            <option value="">Grup yok</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
+            <option value="">Seri yok</option>
+            {series.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
               </option>
             ))}
-            <option value={NEW_GROUP}>+ Yeni grup…</option>
+            <option value={NEW_SERIES}>+ Yeni seri…</option>
           </select>
         </Field>
-        {addingGroup && (
+        {addingSeries && (
           <div className="field-row new-group">
-            <Field id="p-group-new" label="Yeni grubun adı">
+            <Field id="p-series-new" label="Yeni serinin adı">
               <input
-                id="p-group-new"
-                value={groupName}
+                id="p-series-new"
+                value={seriesName}
                 autoFocus
-                onChange={(e) => setGroupName(e.target.value)}
+                onChange={(e) => setSeriesName(e.target.value)}
                 onKeyDown={(e) => {
-                  // Enter adds the group; it must not submit anything else
+                  // Enter adds the series; it must not submit anything else
                   if (e.key === "Enter") {
                     e.preventDefault()
-                    createGroup()
+                    createSeries()
                   }
                 }}
               />
             </Field>
-            <button type="button" className="button accent" disabled={!groupName.trim()} onClick={createGroup}>
+            <button type="button" className="button accent" disabled={!seriesName.trim()} onClick={createSeries}>
               Ekle
             </button>
-            <button type="button" className="button paper" onClick={() => setAddingGroup(false)}>
+            <button type="button" className="button paper" onClick={() => setAddingSeries(false)}>
               Vazgeç
             </button>
           </div>
@@ -555,34 +561,6 @@ function PaintingEditor({
           />
           <span>Gizli (sitede görünmez)</span>
         </label>
-
-        {series.length > 0 && (
-          <fieldset className="colours">
-            <legend>Seriler</legend>
-            <p className="muted small">
-              Bir resim birden fazla seride olabilir. Başlığı boşsa seri adını ve sırasını alır.
-            </p>
-            {series.map((s) => (
-              <label key={s.id} className="switch" htmlFor={`p-series-${s.id}`}>
-                <input
-                  id={`p-series-${s.id}`}
-                  type="checkbox"
-                  checked={s.paintingIds.includes(painting.id)}
-                  onChange={(e) => {
-                    const member = e.target.checked
-                    update((d) => {
-                      if (member) addToSeries(d, s.id, painting.id)
-                      else
-                        for (const x of d.series)
-                          if (x.id === s.id) x.paintingIds = x.paintingIds.filter((id) => id !== painting.id)
-                    })
-                  }}
-                />
-                <span>{s.name}</span>
-              </label>
-            ))}
-          </fieldset>
-        )}
 
         <fieldset className="colours">
           <legend>Arka plan renkleri</legend>
@@ -622,7 +600,7 @@ function PaintingEditor({
                     update((d) => {
                       d.paintings = d.paintings.filter((p) => p.id !== painting.id)
                       d.featured = d.featured.filter((id) => id !== painting.id)
-                      for (const x of d.series) x.paintingIds = x.paintingIds.filter((id) => id !== painting.id)
+                      leaveSeries(d, painting.id)
                     })
                     onClose()
                   }}
@@ -714,61 +692,6 @@ function Featured({ site, update }: { site: SiteData; update: Update }) {
   )
 }
 
-function Groups({ site, update }: { site: SiteData; update: Update }) {
-  const [name, setName] = useState("")
-  const add = (e: FormEvent) => {
-    e.preventDefault()
-    const trimmed = name.trim()
-    if (!trimmed) return
-    update((d) => d.groups.push({ id: newId(slug(trimmed) || "grup"), name: trimmed }))
-    setName("")
-  }
-  return (
-    <section className="stack">
-      <p className="muted">
-        Galerideki resimleri gruplara ayırır. Bir grubu silince resimleri silinmez, grupsuz kalır.
-      </p>
-      <ul className="rows">
-        {site.groups.map((g, i) => (
-          <li key={g.id} className="row">
-            <label className="visually-hidden" htmlFor={`group-${g.id}`}>
-              Grup adı
-            </label>
-            <input
-              id={`group-${g.id}`}
-              className="row-input"
-              value={g.name}
-              onChange={(e) => update((d) => (d.groups[i]!.name = e.target.value))}
-            />
-            <div className="row-actions">
-              <button
-                type="button"
-                className="button paper"
-                onClick={() =>
-                  update((d) => {
-                    d.groups = d.groups.filter((x) => x.id !== g.id)
-                    for (const p of d.paintings) if (p.groupId === g.id) p.groupId = null
-                  })
-                }
-              >
-                Sil
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <form className="form inline" onSubmit={add}>
-        <Field id="group-new" label="Yeni grup">
-          <input id="group-new" value={name} onChange={(e) => setName(e.target.value)} />
-        </Field>
-        <button type="submit" className="button accent">
-          Ekle
-        </button>
-      </form>
-    </section>
-  )
-}
-
 function SeriesTab(props: UploadProps & { update: Update }) {
   const { site, update, onEdit } = props
   const upload = useUpload(props)
@@ -792,8 +715,8 @@ function SeriesTab(props: UploadProps & { update: Update }) {
   return (
     <section className="stack">
       <p className="muted">
-        Seri, kendi sırası olan bir resim dizisidir. Bir resim birden fazla seride olabilir. Seriye eklenen başlıksız
-        resim seri adını ve sırasını alır (örnek: “Kuşlar 2”).
+        Seri, kendi sırası olan bir resim dizisidir ve galeride ayrı bir başlık olarak görünür. Bir resim tek bir seride
+        olur. Seriye eklenen başlıksız resim seri adını ve sırasını alır (örnek: “Kuşlar 2”).
       </p>
       {site.series.map((s) => {
         const others = site.paintings.filter((p) => !s.paintingIds.includes(p.id))
@@ -853,7 +776,7 @@ function SeriesTab(props: UploadProps & { update: Update }) {
               })}
             </ul>
             {others.length > 0 && (
-              <Field id={`series-add-${s.id}`} label="Var olan bir resmi ekle">
+              <Field id={`series-add-${s.id}`} label="Var olan bir resmi bu seriye taşı">
                 <select
                   id={`series-add-${s.id}`}
                   value=""

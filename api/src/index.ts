@@ -4,7 +4,7 @@ import { devSeed } from "./devSeed.js"
 import { seed } from "./seed.js"
 import { createStorage, safeName, StorageNotConfiguredError } from "./storage.js"
 import type { Painting, SiteData } from "./types.js"
-import { sanitizeSite } from "./validate.js"
+import { sanitizeSite, upgradeStored } from "./validate.js"
 
 const storage = createStorage()
 
@@ -15,8 +15,8 @@ const MEMO_MS = 60_000
 async function loadSite(fresh = false): Promise<SiteData> {
   if (!fresh && memo && Date.now() - memo.at < MEMO_MS) return memo.data
   const stored = await storage.readSite()
-  // documents saved before a field existed are completed here; local development starts with placeholders
-  const data = stored ? { ...stored, series: stored.series ?? [] } : storage.kind === "local" ? devSeed : seed
+  // older documents are brought to the current shape on read; local development starts with placeholders
+  const data = stored ? upgradeStored(stored) : storage.kind === "local" ? devSeed : seed
   memo = { at: Date.now(), data }
   return data
 }

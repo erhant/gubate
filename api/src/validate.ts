@@ -1,4 +1,4 @@
-import type { Group, Painting, Series, SiteData, TimelineEntry } from "./types.js"
+import type { Painting, Series, SiteData, TimelineEntry } from "./types.js"
 
 const HEX = /^#[0-9a-fA-F]{6}$/
 const ID = /^[a-z0-9][a-z0-9-]{0,63}$/
@@ -22,7 +22,6 @@ function painting(v: any): Painting | null {
     widthCm: num(v.widthCm, 1, 1000),
     heightCm: num(v.heightCm, 1, 1000),
     year: num(v.year, 1900, 2200),
-    groupId: typeof v.groupId === "string" && ID.test(v.groupId) ? v.groupId : null,
     sold: v.sold === true,
     hidden: v.hidden === true,
     palette: [0, 1, 2].map((i) => (HEX.test(pal[i]) ? pal[i].toLowerCase() : "#f4f2ec")) as Painting["palette"],
@@ -30,6 +29,49 @@ function painting(v: any): Painting | null {
     images: { small: url(images.small), medium: url(images.medium), large: url(images.large) },
   }
   return p.images.small && p.images.medium && p.images.large ? p : null
+}
+
+/**
+ * Builds the series list from a document of any vintage.
+ *
+ * Older documents also had "groups": a single-choice label stored on the painting as groupId.
+ * Groups and series are now one thing, so each old group becomes a series holding its paintings
+ * in gallery order. A painting ends up in at most one series: the first one that lists it wins.
+ */
+export function seriesOf(v: any, paintingIds: Set<string>): Series[] {
+  const series: Series[] = (Array.isArray(v?.series) ? v.series : [])
+    .slice(0, 100)
+    .filter((s: any) => s && ID.test(s.id))
+    .map((s: any) => ({
+      id: s.id as string,
+      name: str(s.name, 80),
+      paintingIds: (Array.isArray(s.paintingIds) ? s.paintingIds : []).filter((id: unknown) => typeof id === "string"),
+    }))
+  for (const g of Array.isArray(v?.groups) ? v.groups : []) {
+    if (!g || !ID.test(g.id)) continue
+    let target = series.find((s) => s.id === g.id)
+    if (!target) {
+      target = { id: g.id, name: str(g.name, 80), paintingIds: [] }
+      series.push(target)
+    }
+    for (const p of Array.isArray(v?.paintings) ? v.paintings : []) {
+      if (p?.groupId === g.id && typeof p.id === "string") target.paintingIds.push(p.id)
+    }
+  }
+  const taken = new Set<string>()
+  for (const s of series) {
+    s.paintingIds = s.paintingIds.filter((id) => paintingIds.has(id) && !taken.has(id) && !!taken.add(id))
+  }
+  return series
+}
+
+/** Brings a document read from storage to the current shape without otherwise changing it. */
+export function upgradeStored(stored: any): SiteData {
+  const { groups: _groups, ...rest } = stored
+  const paintings = (Array.isArray(stored.paintings) ? stored.paintings : []).map(
+    ({ groupId: _groupId, ...p }: any) => p
+  )
+  return { ...rest, paintings, series: seriesOf(stored, new Set(paintings.map((p: any) => p.id))) }
 }
 
 /** Coerces untrusted input into a valid SiteData, or returns null if it is not even close. */
@@ -41,27 +83,7 @@ export function sanitizeSite(input: unknown): SiteData | null {
     .slice(0, 500)
     .map(painting)
     .filter((p): p is Painting => !!p && !seen.has(p.id) && !!seen.add(p.id))
-  const groups: Group[] = (Array.isArray(v.groups) ? v.groups : [])
-    .slice(0, 50)
-    .filter((g: any) => g && ID.test(g.id))
-    .map((g: any) => ({ id: g.id, name: str(g.name, 60) }))
-  const groupIds = new Set(groups.map((g) => g.id))
-  for (const p of paintings) if (p.groupId && !groupIds.has(p.groupId)) p.groupId = null
-  const series: Series[] = (Array.isArray(v.series) ? v.series : [])
-    .slice(0, 100)
-    .filter((s: any) => s && ID.test(s.id))
-    .map((s: any) => ({
-      id: s.id,
-      name: str(s.name, 80),
-      // drop ids of paintings that no longer exist, and duplicates
-      paintingIds: [
-        ...new Set<string>(
-          (Array.isArray(s.paintingIds) ? s.paintingIds : []).filter(
-            (id: unknown) => typeof id === "string" && seen.has(id)
-          )
-        ),
-      ],
-    }))
+  const series = seriesOf(v, seen)
   const about = v.about ?? {}
   const contact = v.contact ?? {}
   const timeline: TimelineEntry[] = (Array.isArray(about.timeline) ? about.timeline : [])
@@ -72,7 +94,6 @@ export function sanitizeSite(input: unknown): SiteData | null {
     version: 1,
     updatedAt: new Date().toISOString(),
     paintings,
-    groups,
     series,
     featured: (Array.isArray(v.featured) ? v.featured : [])
       .filter((id: unknown) => typeof id === "string" && seen.has(id))
