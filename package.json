@@ -1,29 +1,10 @@
 {
+  "name": "gubate",
   "private": true,
   "scripts": {
-    "dev": "next",
-    "build": "next build",
-    "start": "next start",
-    "typecheck": "tsc"
-  },
-  "dependencies": {
-    "@mantine/core": "^4.1.2",
-    "@mantine/hooks": "^4.1.2",
-    "@mantine/next": "^4.1.2",
-    "framer-motion": "^6.3.3",
-    "next": "latest",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
-    "react-responsive-carousel": "^3.2.23",
-    "typescript": "^4.2.4"
-  },
-  "devDependencies": {
-    "@types/jest": "^26.0.23",
-    "@types/node": "^15.6.0",
-    "@types/react": "^17.0.6",
-    "@types/react-dom": "^17.0.5",
-    "eslint-config-prettier": "^8.5.0",
-    "prettier": "^2.6.1",
-    "sass": "^1.49.9"
+    "setup": "pnpm --dir api install && pnpm --dir web install",
+    "dev": "pnpm --dir api dev & pnpm --dir web dev",
+    "build": "pnpm --dir web build",
+    "typecheck": "pnpm --dir api typecheck && pnpm --dir web exec tsc --noEmit"
   }
 }
