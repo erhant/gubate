@@ -649,10 +649,14 @@ function PaintingEditor({
 
 function Featured({ site, update }: { site: SiteData; update: Update }) {
   const byId = new Map(site.paintings.map((p) => [p.id, p]))
-  const rest = site.paintings.filter((p) => !site.featured.includes(p.id) && !p.hidden)
+  // only paintings visitors can see are offered; the rest are counted so the list never just "runs out"
+  const eligible = site.paintings.filter((p) => !p.hidden && !isUntitled(p))
+  const rest = eligible.filter((p) => !site.featured.includes(p.id))
+  const notShown = site.paintings.length - eligible.length
   return (
     <section className="stack">
       <p className="muted">Ana sayfada sırayla gösterilecek resimler. Beş resim önerilir.</p>
+      {site.featured.length === 0 && <p className="muted">Ana sayfada henüz resim yok.</p>}
       <ul className="rows">
         {site.featured.map((id, i) => {
           const p = byId.get(id)
@@ -662,8 +666,9 @@ function Featured({ site, update }: { site: SiteData; update: Update }) {
               <img src={p.images.small} alt="" />
               <div className="row-text">
                 <strong>
-                  {i + 1}. {p.title}
+                  {i + 1}. {p.title || UNTITLED}
                 </strong>
+                {(p.hidden || isUntitled(p)) && <span className="badge quiet">Sitede görünmez</span>}
               </div>
               <div className="row-actions">
                 <button
@@ -696,21 +701,40 @@ function Featured({ site, update }: { site: SiteData; update: Update }) {
           )
         })}
       </ul>
-      {rest.length > 0 && (
-        <Field id="featured-add" label="Ana sayfaya resim ekle">
-          <select
-            id="featured-add"
-            value=""
-            onChange={(e) => e.target.value && update((d) => d.featured.push(e.target.value))}
-          >
-            <option value="">Resim seçin…</option>
-            {rest.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.title}
-              </option>
-            ))}
-          </select>
-        </Field>
+      <h2>Eklenebilecek resimler</h2>
+      {rest.length === 0 && (
+        <p className="muted">
+          {eligible.length === 0
+            ? "Henüz sitede görünen bir resim yok."
+            : "Sitede görünen bütün resimler zaten ana sayfada."}
+        </p>
+      )}
+      {/* one button per painting: several can be added one after another without reopening a list */}
+      <ul className="rows">
+        {rest.map((p) => (
+          <li key={p.id} className="row">
+            <img src={p.images.small} alt="" />
+            <div className="row-text">
+              <strong>{p.title}</strong>
+            </div>
+            <div className="row-actions">
+              <button
+                type="button"
+                className="button accent"
+                aria-label={`${p.title} ana sayfaya ekle`}
+                onClick={() => update((d) => void (d.featured.includes(p.id) || d.featured.push(p.id)))}
+              >
+                Ekle
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {notShown > 0 && (
+        <p className="muted small">
+          {notShown} resim burada listelenmiyor: gizli ya da başlıksız resimler sitede görünmediği için ana sayfaya
+          eklenemez.
+        </p>
       )}
     </section>
   )
