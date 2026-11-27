@@ -485,8 +485,6 @@ a.chip {
   width: 100%;
 }
 .viewer-image {
-  width: auto;
-  max-height: 78vh;
   box-shadow: 0 24px 60px rgba(22, 22, 26, 0.22);
 }
 .fade {
@@ -513,8 +511,8 @@ a.chip {
   font-size: 1.7rem;
   font-weight: 400;
 }
-/* ---- share view */
-.share-overlay {
+/* ---- QR code of the gallery, in the admin panel */
+.qr-overlay {
   position: fixed;
   inset: 0;
   z-index: 20;
@@ -525,37 +523,17 @@ a.chip {
   background: rgba(22, 22, 26, 0.5);
   animation: fade 0.25s ease-out both;
 }
-.share {
+.qr {
   width: 100%;
-  max-width: 420px;
+  max-width: 380px;
   max-height: 100%;
   overflow: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 24px 16px;
+  padding: 20px;
   background: var(--paper);
   border: 1px solid var(--ink);
-  text-align: center;
 }
-.share h2 {
-  font-family: var(--display);
-  font-size: 1.5rem;
-  font-weight: 400;
-}
-.share canvas {
-  width: min(280px, 100%);
-  height: auto;
-}
-.share-url {
-  overflow-wrap: anywhere;
-}
-.share-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
+.qr img {
+  width: 100%;
 }
 
 /* ---- about, contact */

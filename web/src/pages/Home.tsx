@@ -35,7 +35,7 @@ export function Home({ site }: { site: SiteData }) {
         </div>
         {hero && (
           <a className="work hero-work" href={href("galeri", hero.id)} {...hover(hero)}>
-            <img src={hero.images.medium} alt={hero.title} style={{ aspectRatio: hero.aspect }} />
+            <img src={hero.images.medium} alt={hero.title} fetchPriority="high" style={{ aspectRatio: hero.aspect }} />
             <span className="caption">
               1 / {featured.length} · {hero.title}
             </span>
@@ -46,7 +46,13 @@ export function Home({ site }: { site: SiteData }) {
       {rest.map((p, i) => (
         <section key={p.id} className={i % 2 ? "feature" : "feature reverse"}>
           <a className="work" href={href("galeri", p.id)} {...hover(p)}>
-            <img src={p.images.medium} alt={p.title} loading="lazy" style={{ aspectRatio: p.aspect }} />
+            <img
+              src={p.images.medium}
+              alt={p.title}
+              loading="lazy"
+              decoding="async"
+              style={{ aspectRatio: p.aspect }}
+            />
           </a>
           <div className="feature-text">
             <p className="count">

@@ -100,7 +100,13 @@ function blobStorage(): Storage {
     },
     async putImage(name, body, contentType) {
       const { put } = await sdk()
-      const blob = await put(`paintings/${name}`, body, { access: "public", addRandomSuffix: true, contentType })
+      // every upload gets its own name and is never changed, so browsers may keep it for a year
+      const blob = await put(`paintings/${name}`, body, {
+        access: "public",
+        addRandomSuffix: true,
+        contentType,
+        cacheControlMaxAge: 31_536_000,
+      })
       return blob.url
     },
     async deleteImages(urls) {

@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { setInk } from "../ink/InkBackground"
 import { href } from "../router"
 import type { Painting, SiteData } from "../types"
-import { ShareButton } from "./Share"
 import { details, SoldBadge } from "./shared"
 
 /** What the gallery is showing: everything, or one series in its own order. */
@@ -22,8 +21,11 @@ let remembered = ""
 /** One, two or three columns depending on how wide the gallery is. */
 function useColumnCount() {
   const ref = useRef<HTMLDivElement>(null)
-  const [count, setCount] = useState(3)
-  useEffect(() => {
+  // The first guess comes from the window and the real width is measured before anything is painted.
+  // Starting with three narrow columns on a phone would put every painting close to the screen for
+  // a moment, and the browser would then download all of them instead of only the ones in view.
+  const [count, setCount] = useState(() => (window.innerWidth < 560 ? 1 : window.innerWidth < 1100 ? 2 : 3))
+  useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
     const measure = () => setCount(el.clientWidth < 520 ? 1 : el.clientWidth < 860 ? 2 : 3)
@@ -117,11 +119,6 @@ export function Gallery({ site, filter }: { site: SiteData; filter: GalleryFilte
               <path d="M15.5 15.5 21 21" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
           </button>
-          <ShareButton
-            className="chip search-toggle"
-            label={current ? `${current.name} serisi` : "Galeri"}
-            path={current ? `seri/${current.id}` : "galeri"}
-          />
         </div>
         {/* floats over the top of the paintings, so opening it or typing in it moves nothing */}
         {searching && (
@@ -172,7 +169,13 @@ export function Gallery({ site, filter }: { site: SiteData; filter: GalleryFilte
                 onFocus={() => setInk(p.palette)}
                 onBlur={() => setInk(null)}
               >
-                <img src={p.images.small} alt={p.title} loading="lazy" style={{ aspectRatio: p.aspect }} />
+                <img
+                  src={p.images.small}
+                  alt={p.title}
+                  loading="lazy"
+                  decoding="async"
+                  style={{ aspectRatio: p.aspect }}
+                />
                 <span className="tile-title">{p.title}</span>
                 <span className="muted small">{details(p)}</span>
                 <SoldBadge painting={p} />

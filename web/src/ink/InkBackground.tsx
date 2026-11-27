@@ -84,7 +84,16 @@ function startInk(canvas: HTMLCanvasElement, { getTarget, scale, zoom, full, eas
   const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches
   const cur = [...getTarget()] as InkState
   let frame = 0
+  let drawn = -1000
   const draw = (ms: number) => {
+    frame = requestAnimationFrame(draw)
+    // The wash moves slowly, so 30 frames a second look the same as 60 and cost half the battery.
+    // (A display runs at 60 or more; 30 ms lets every second frame of a 60 Hz one through.)
+    const elapsed = ms - drawn
+    if (elapsed < 30) return
+    drawn = ms
+    // colours approach their target at the same speed whatever the frame rate
+    const pull = 1 - (1 - ease) ** Math.min(6, elapsed / (1000 / 60))
     const w = Math.max(2, Math.round(canvas.clientWidth / scale))
     const hgt = Math.max(2, Math.round(canvas.clientHeight / scale))
     if (canvas.width !== w || canvas.height !== hgt) {
@@ -93,7 +102,7 @@ function startInk(canvas: HTMLCanvasElement, { getTarget, scale, zoom, full, eas
       gl.viewport(0, 0, w, hgt)
     }
     const goal = getTarget()
-    for (let i = 0; i < 10; ++i) cur[i] = still ? goal[i]! : cur[i]! + (goal[i]! - cur[i]!) * ease
+    for (let i = 0; i < 10; ++i) cur[i] = still ? goal[i]! : cur[i]! + (goal[i]! - cur[i]!) * pull
     gl.uniform2f(ur, w, hgt)
     gl.uniform1f(ut, still ? 40 : 40 + ms / 1000)
     gl.uniform3f(ug, cur[0], cur[1], cur[2])
@@ -101,7 +110,6 @@ function startInk(canvas: HTMLCanvasElement, { getTarget, scale, zoom, full, eas
     gl.uniform3f(ub, cur[6], cur[7], cur[8])
     gl.uniform1f(uk, cur[9])
     gl.drawArrays(gl.TRIANGLES, 0, 3)
-    frame = requestAnimationFrame(draw)
   }
   frame = requestAnimationFrame(draw)
   return () => cancelAnimationFrame(frame)

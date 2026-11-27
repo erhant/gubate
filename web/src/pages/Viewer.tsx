@@ -1,9 +1,20 @@
 import { useEffect } from "react"
 import { setInk } from "../ink/InkBackground"
 import { go, href } from "../router"
-import type { SiteData } from "../types"
-import { ShareButton } from "./Share"
-import { details, SoldBadge } from "./shared"
+import type { Painting, SiteData } from "../types"
+import { details, SoldBadge, srcSet } from "./shared"
+
+/** The painting may be 78% of the window tall; this is the width that goes with that height. */
+const widthAtFullHeight = (p: Painting) => `${(78 * p.aspect).toFixed(1)}vh`
+/** Roughly how wide the painting is drawn, for the browser to choose a file by. */
+const sizes = (p: Painting) => `min(100vw, ${widthAtFullHeight(p)})`
+
+/** Fetches a painting in the size this screen needs, so that turning to it shows it at once. */
+function preload(p: Painting) {
+  const img = new Image()
+  img.sizes = sizes(p)
+  img.srcset = srcSet(p)
+}
 
 export function Viewer({ site, id }: { site: SiteData; id: string }) {
   const index = site.paintings.findIndex((p) => p.id === id)
@@ -44,7 +55,6 @@ export function Viewer({ site, id }: { site: SiteData; id: string }) {
           Galeriye dön
         </a>
         <div className="actions">
-          <ShareButton className="button paper" label={painting.title} path={`galeri/${painting.id}`} text />
           {prev && count > 1 && (
             <a className="button paper" href={href("galeri", prev.id)}>
               Önceki
@@ -62,8 +72,21 @@ export function Viewer({ site, id }: { site: SiteData; id: string }) {
         key={painting.id}
         className="viewer-image fade"
         src={painting.images.large}
+        srcSet={srcSet(painting)}
+        sizes={sizes(painting)}
         alt={painting.title}
-        style={{ aspectRatio: painting.aspect }}
+        // the small picture is usually in the cache from the gallery, and fills the frame until the sharp one arrives
+        style={{
+          // set here and not left to the file's own size, so a painting looks the same whichever file is chosen
+          width: `min(100%, ${widthAtFullHeight(painting)})`,
+          aspectRatio: painting.aspect,
+          background: `center / cover url("${painting.images.small}")`,
+        }}
+        // once it is on screen, the neighbours are fetched for "Önceki" and "Sonraki"
+        onLoad={() => {
+          if (count > 1 && next) preload(next)
+          if (count > 2 && prev) preload(prev)
+        }}
       />
       <div className="plate">
         <h1>{painting.title}</h1>

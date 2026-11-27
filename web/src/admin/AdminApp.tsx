@@ -3,6 +3,7 @@ import { admin, ApiError } from "../api"
 import { InkPreview, setInk } from "../ink/InkBackground"
 import { href } from "../router"
 import type { Painting, Series, SiteData } from "../types"
+import { GalleryQr } from "./GalleryQr"
 import { ImageDecodeError, prepareImage, suggestFromUrl } from "./imageTools"
 
 type Tab = "resimler" | "anasayfa" | "seriler" | "yazilar"
@@ -146,6 +147,7 @@ export default function AdminApp() {
       <header className="admin-head">
         <h1>Yönetim</h1>
         <div className="actions">
+          <GalleryQr />
           <a className="button paper" href={href()}>
             Siteyi gör
           </a>
@@ -396,7 +398,7 @@ function Paintings(props: UploadProps & { update: Update }) {
       <ul className="rows">
         {site.paintings.map((p, i) => (
           <li key={p.id} className="row">
-            <img src={p.images.small} alt="" />
+            <img src={p.images.small} alt="" loading="lazy" decoding="async" />
             <div className="row-text">
               <strong>{p.title || "Adsız"}</strong>
               <span className="row-badges">
@@ -677,7 +679,7 @@ function Featured({ site, update }: { site: SiteData; update: Update }) {
           if (!p) return null
           return (
             <li key={id} className="row">
-              <img src={p.images.small} alt="" />
+              <img src={p.images.small} alt="" loading="lazy" decoding="async" />
               <div className="row-text">
                 <strong>
                   {i + 1}. {p.title || UNTITLED}
@@ -727,7 +729,7 @@ function Featured({ site, update }: { site: SiteData; update: Update }) {
       <ul className="rows">
         {rest.map((p) => (
           <li key={p.id} className="row">
-            <img src={p.images.small} alt="" />
+            <img src={p.images.small} alt="" loading="lazy" decoding="async" />
             <div className="row-text">
               <strong>{p.title}</strong>
             </div>
@@ -800,7 +802,7 @@ function SeriesTab(props: UploadProps & { update: Update }) {
                 if (!p) return null
                 return (
                   <li key={id} className="row">
-                    <img src={p.images.small} alt="" />
+                    <img src={p.images.small} alt="" loading="lazy" decoding="async" />
                     <div className="row-text">
                       <strong>
                         {i + 1}. {p.title || UNTITLED}
