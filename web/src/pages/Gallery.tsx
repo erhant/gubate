@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { setInk } from "../ink/InkBackground"
 import { href } from "../router"
 import type { Painting, SiteData } from "../types"
+import { ShareButton } from "./Share"
 import { details, SoldBadge } from "./shared"
 
 /** What the gallery is showing: everything, or one series in its own order. */
@@ -116,42 +117,46 @@ export function Gallery({ site, filter }: { site: SiteData; filter: GalleryFilte
               <path d="M15.5 15.5 21 21" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
           </button>
-        </div>
-      </header>
-      {searching && (
-        <div className="search">
-          <input
-            type="search"
-            aria-label="Resim ara"
-            placeholder="Resim adı, teknik ya da yıl"
-            enterKeyHint="search"
-            autoComplete="off"
-            autoFocus={query === ""}
-            value={query}
-            onChange={(e) => search(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                search("")
-                setSearching(false)
-              }
-              // puts the on-screen keyboard away so the results can be seen
-              if (e.key === "Enter") e.currentTarget.blur()
-            }}
+          <ShareButton
+            className="chip search-toggle"
+            label={current ? `${current.name} serisi` : "Galeri"}
+            path={current ? `seri/${current.id}` : "galeri"}
           />
         </div>
-      )}
-      {words.length > 0 ? (
-        <p className="muted" role="status">
-          {shown.length > 0
-            ? `“${query.trim()}” için ${shown.length} resim${current ? ` · ${current.name} serisinde` : ""}`
-            : `“${query.trim()}” için resim bulunamadı${current ? ` · ${current.name} serisinde` : ""}.`}
+        {/* floats over the top of the paintings, so opening it or typing in it moves nothing */}
+        {searching && (
+          <div className="search">
+            <input
+              type="search"
+              aria-label="Resim ara"
+              placeholder="Resim adı, teknik ya da yıl"
+              enterKeyHint="search"
+              autoComplete="off"
+              autoFocus={query === ""}
+              value={query}
+              onChange={(e) => search(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  search("")
+                  setSearching(false)
+                }
+                // puts the on-screen keyboard away so the results can be seen
+                if (e.key === "Enter") e.currentTarget.blur()
+              }}
+            />
+            {words.length > 0 && (
+              <p className="muted small" role="status">
+                {shown.length > 0 ? `${shown.length} resim bulundu` : "Resim bulunamadı"}
+                {current ? ` · ${current.name} serisinde` : ""}
+              </p>
+            )}
+          </div>
+        )}
+      </header>
+      {current && (
+        <p className="muted">
+          {current.name} serisi · {inFilter} resim
         </p>
-      ) : (
-        current && (
-          <p className="muted">
-            {current.name} serisi · {shown.length} resim
-          </p>
-        )
       )}
       {inFilter === 0 && <p className="muted">Henüz bir resim yok.</p>}
       <div className="grid" ref={gridRef}>

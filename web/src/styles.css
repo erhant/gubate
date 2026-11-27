@@ -174,7 +174,16 @@ p {
   .chip-rows {
     align-items: flex-start;
   }
+  /* menu on top at its own height: on a short page the spare room goes below the content, not into the menu */
+  .shell {
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
+  .main {
+    flex: 1 1 auto;
+  }
   .rail {
+    flex: none;
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
@@ -429,8 +438,22 @@ a.chip {
   align-items: center;
   justify-content: center;
 }
+.gallery-head {
+  position: relative;
+}
 .search {
-  max-width: 460px;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 5;
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  box-shadow: 0 10px 28px rgba(22, 22, 26, 0.22);
 }
 /* the page already offers a way to clear and close the box */
 .search input::-webkit-search-cancel-button {
@@ -490,57 +513,49 @@ a.chip {
   font-size: 1.7rem;
   font-weight: 400;
 }
-.wall {
-  position: relative;
+/* ---- share view */
+.share-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(22, 22, 26, 0.5);
+  animation: fade 0.25s ease-out both;
+}
+.share {
   width: 100%;
-  max-width: 960px;
-  background: rgba(244, 242, 236, 0.82);
-  border-bottom: 3px solid var(--ink);
-}
-.wall img {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 3px solid #fff;
-  outline: 1px solid var(--ink);
-  box-shadow: 0 6px 14px rgba(22, 22, 26, 0.28);
-}
-.console {
-  position: absolute;
-  bottom: 0;
+  max-width: 420px;
+  max-height: 100%;
+  overflow: auto;
   display: flex;
   flex-direction: column;
-}
-.console-body {
-  flex: 0 0 62%;
-  display: flex;
-  border: 2px solid var(--ink);
-  background: #e9e5da;
-}
-.console-body span {
-  flex: 1;
-  border-right: 2px solid var(--ink);
-}
-.console-body span:last-child {
-  border-right: 0;
-}
-.console-legs {
-  flex: 1;
-  display: flex;
-  justify-content: space-between;
-  padding: 0 6%;
-}
-.console-legs span {
-  width: 2px;
-  background: var(--ink);
-}
-.console-label {
-  position: absolute;
-  left: 0;
-  right: 0;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 16px;
+  background: var(--paper);
+  border: 1px solid var(--ink);
   text-align: center;
-  font-size: 0.72rem;
-  color: var(--muted);
+}
+.share h2 {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+.share canvas {
+  width: min(280px, 100%);
+  height: auto;
+}
+.share-url {
+  overflow-wrap: anywhere;
+}
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
 }
 
 /* ---- about, contact */

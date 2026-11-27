@@ -1,58 +1,13 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { setInk } from "../ink/InkBackground"
 import { go, href } from "../router"
-import type { Painting, SiteData } from "../types"
+import type { SiteData } from "../types"
+import { ShareButton } from "./Share"
 import { details, SoldBadge } from "./shared"
-
-// The scale view: a wall of 300 x 170 cm with a 160 x 75 cm console table for reference.
-// For a painting too large for that wall, the whole scene is zoomed out so it still fits.
-const WALL_W = 300
-const WALL_H = 170
-const CONSOLE_W = 160
-const CONSOLE_H = 75
-/** gap between the console top and the painting's lower edge, in cm */
-const HANG_GAP = 20
-
-function Wall({ painting }: { painting: Painting }) {
-  const width = painting.widthCm!
-  const height = painting.heightCm!
-  const zoom = Math.max(1, width / (WALL_W * 0.8), (height + CONSOLE_H + HANG_GAP + 10) / WALL_H)
-  const w = WALL_W * zoom
-  const h = WALL_H * zoom
-  const pct = (cm: number, of: number) => `${(cm / of) * 100}%`
-  return (
-    <div className="wall" style={{ aspectRatio: `${WALL_W} / ${WALL_H}` }}>
-      <img
-        src={painting.images.medium}
-        alt={painting.title}
-        style={{ width: pct(width, w), bottom: pct(CONSOLE_H + HANG_GAP, h), aspectRatio: `${width} / ${height}` }}
-      />
-      <div
-        className="console"
-        aria-hidden="true"
-        style={{ width: pct(CONSOLE_W, w), height: pct(CONSOLE_H, h), left: pct((w - CONSOLE_W) / 2, w) }}
-      >
-        <div className="console-body">
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className="console-legs">
-          <span />
-          <span />
-        </div>
-      </div>
-      <p className="console-label" style={{ bottom: pct(CONSOLE_H + 2, h) }}>
-        konsol {CONSOLE_W} cm
-      </p>
-    </div>
-  )
-}
 
 export function Viewer({ site, id }: { site: SiteData; id: string }) {
   const index = site.paintings.findIndex((p) => p.id === id)
   const painting = site.paintings[index]
-  const [wall, setWall] = useState(false)
   const count = site.paintings.length
   const prev = site.paintings[(index + count - 1) % count]
   const next = site.paintings[(index + 1) % count]
@@ -82,7 +37,6 @@ export function Viewer({ site, id }: { site: SiteData; id: string }) {
     )
   }
 
-  const hasSize = !!(painting.widthCm && painting.heightCm)
   return (
     <div className="viewer">
       <div className="viewer-bar">
@@ -90,11 +44,7 @@ export function Viewer({ site, id }: { site: SiteData; id: string }) {
           Galeriye dön
         </a>
         <div className="actions">
-          {hasSize && (
-            <button type="button" className="button paper" aria-pressed={wall} onClick={() => setWall(!wall)}>
-              {wall ? "Resme dön" : "Duvarda gör"}
-            </button>
-          )}
+          <ShareButton className="button paper" label={painting.title} path={`galeri/${painting.id}`} text />
           {prev && count > 1 && (
             <a className="button paper" href={href("galeri", prev.id)}>
               Önceki
@@ -107,18 +57,14 @@ export function Viewer({ site, id }: { site: SiteData; id: string }) {
           )}
         </div>
       </div>
-      {wall && hasSize ? (
-        <Wall painting={painting} />
-      ) : (
-        // the key restarts the fade for every painting
-        <img
-          key={painting.id}
-          className="viewer-image fade"
-          src={painting.images.large}
-          alt={painting.title}
-          style={{ aspectRatio: painting.aspect }}
-        />
-      )}
+      {/* the key restarts the fade for every painting */}
+      <img
+        key={painting.id}
+        className="viewer-image fade"
+        src={painting.images.large}
+        alt={painting.title}
+        style={{ aspectRatio: painting.aspect }}
+      />
       <div className="plate">
         <h1>{painting.title}</h1>
         <p className="muted">{details(painting)}</p>
